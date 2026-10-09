@@ -32,3 +32,11 @@ pnpm-debug.log*
 *.tsbuildinfo
 test-results/
 playwright-report/
+
+# Android & Capacitor build ignores
+android/app/build/
+android/.gradle/
+android/local.properties
+hs_err_*.log
+replay_*.log
+
