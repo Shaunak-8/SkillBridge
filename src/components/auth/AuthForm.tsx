@@ -66,21 +66,190 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' | 'forgot' | 'rese
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Please try again.'); }
     finally { setBusy(false); }
   }
-  return <main className="grid min-h-screen place-items-center bg-canvas px-5 py-12"><Card className="w-full max-w-md p-7">
-    <Link href="/" className="mb-8 block text-lg font-bold text-brand">SkillBridge</Link>
-    <h1 className="text-2xl font-bold">{titles[mode]}</h1><p className="mt-2 text-sm text-muted">Connect your skills with real local opportunities.</p>
-    {(mode === 'login' || mode === 'signup') && <><Button variant="secondary" className="mt-6 w-full" disabled={busy} onClick={google}>Continue with Google</Button><p className="my-5 text-center text-xs text-muted">or continue with email</p></>}
-    <form onSubmit={submit} className="mt-6 space-y-4" aria-busy={busy}>
-      {mode === 'signup' && <label className="block text-sm font-semibold">Username<Input name="username" autoComplete="username" required pattern="[a-zA-Z0-9_]{3,30}" minLength={3} maxLength={30} className="mt-2" /><span className="mt-1 block text-xs font-normal text-muted">3–30 letters, numbers or underscores. Confirmed during onboarding.</span></label>}
-      {mode !== 'reset' && <label className="block text-sm font-semibold">Email<Input name="email" type="email" autoComplete="email" maxLength={254} required className="mt-2" /></label>}
-      {['signup', 'login', 'reset'].includes(mode) && <><label className="block text-sm font-semibold">Password<Input name="password" type={show ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={mode === 'login' ? 1 : 12} maxLength={128} required className="mt-2" /></label><button type="button" onClick={() => setShow(!show)} className="text-xs font-semibold text-brand" aria-pressed={show}>{show ? 'Hide' : 'Show'} passwords</button></>}
-      {(mode === 'signup' || mode === 'reset') && <><p className="text-xs text-muted">12–128 characters with uppercase, lowercase, a number and a symbol.</p><label className="block text-sm font-semibold">Confirm password<Input name="confirmPassword" type={show ? 'text' : 'password'} autoComplete="new-password" required className="mt-2" /></label></>}
-      {mode === 'verify' && <label className="block text-sm font-semibold">Verification code<Input name="otp" autoComplete="one-time-code" inputMode="numeric" required className="mt-2" /></label>}
-      <p role="status" aria-live="polite" className="text-sm text-brand-dark">{message}</p>
-      <Button className="w-full" disabled={busy}>{busy ? 'Please wait…' : { login: 'Sign in', signup: 'Create account', forgot: 'Send reset link', reset: 'Update password', verify: 'Verify email' }[mode]}</Button>
-      {mode === 'verify' && <Button type="button" variant="secondary" className="w-full" disabled={busy} onClick={e => resend(e.currentTarget.form!)}>Send a new code</Button>}
-    </form>
-    {mode === 'login' && <><Link className="mt-5 block text-sm text-brand" href="/forgot-password">Forgot password?</Link><Link className="mt-3 block text-sm text-brand" href="/verify-email">Verify your email</Link></>}
-    <p className="mt-6 text-sm text-muted">{mode === 'login' ? <Link href="/signup">New to SkillBridge? Create an account</Link> : <Link href="/login">Back to sign in</Link>}</p>
-  </Card></main>;
+  return (
+    <main className="grid min-h-screen place-items-center bg-cream px-5 py-12">
+      <Card className="w-full max-w-md p-8 bg-white border-2 border-[#111111] shadow-[6px_6px_0_#111111]">
+        <Link href="/" className="mb-6 inline-flex items-center gap-2.5">
+          <div className="flex size-9 items-center justify-center rounded-xl border-2 border-[#111111] bg-[#D83D63] text-white font-black text-xs shadow-[2px_2px_0_#111111]">
+            SB
+          </div>
+          <span className="text-xl font-black text-[#151515] tracking-tight">
+            SkillBridge
+          </span>
+        </Link>
+        <h1 className="text-2xl font-black text-[#151515]">{titles[mode]}</h1>
+        <p className="mt-1.5 text-xs font-medium text-[#655F52]">
+          Connect your skills with real local opportunities.
+        </p>
+
+        {(mode === 'login' || mode === 'signup') && (
+          <>
+            <Button
+              variant="secondary"
+              className="mt-6 w-full"
+              disabled={busy}
+              onClick={google}
+            >
+              Continue with Google
+            </Button>
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-0.5 flex-1 bg-[#111111]/15" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#655F52]">
+                or email
+              </span>
+              <div className="h-0.5 flex-1 bg-[#111111]/15" />
+            </div>
+          </>
+        )}
+
+        <form onSubmit={submit} className="mt-4 space-y-4" aria-busy={busy}>
+          {mode === 'signup' && (
+            <label className="block text-xs font-black uppercase tracking-wider text-[#151515]">
+              Username
+              <Input
+                name="username"
+                autoComplete="username"
+                required
+                pattern="[a-zA-Z0-9_]{3,30}"
+                minLength={3}
+                maxLength={30}
+                className="mt-1.5"
+              />
+              <span className="mt-1 block text-[11px] font-medium text-[#655F52]">
+                3–30 letters, numbers or underscores. Confirmed during onboarding.
+              </span>
+            </label>
+          )}
+
+          {mode !== 'reset' && (
+            <label className="block text-xs font-black uppercase tracking-wider text-[#151515]">
+              Email
+              <Input
+                name="email"
+                type="email"
+                autoComplete="email"
+                maxLength={254}
+                required
+                className="mt-1.5"
+              />
+            </label>
+          )}
+
+          {['signup', 'login', 'reset'].includes(mode) && (
+            <>
+              <label className="block text-xs font-black uppercase tracking-wider text-[#151515]">
+                Password
+                <Input
+                  name="password"
+                  type={show ? 'text' : 'password'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  minLength={mode === 'login' ? 1 : 12}
+                  maxLength={128}
+                  required
+                  className="mt-1.5"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShow(!show)}
+                className="text-xs font-bold text-[#D83D63] hover:underline"
+                aria-pressed={show}
+              >
+                {show ? 'Hide password' : 'Show password'}
+              </button>
+            </>
+          )}
+
+          {(mode === 'signup' || mode === 'reset') && (
+            <>
+              <p className="text-[11px] font-medium text-[#655F52]">
+                12–128 characters with uppercase, lowercase, a number and a symbol.
+              </p>
+              <label className="block text-xs font-black uppercase tracking-wider text-[#151515]">
+                Confirm password
+                <Input
+                  name="confirmPassword"
+                  type={show ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  className="mt-1.5"
+                />
+              </label>
+            </>
+          )}
+
+          {mode === 'verify' && (
+            <label className="block text-xs font-black uppercase tracking-wider text-[#151515]">
+              Verification code
+              <Input
+                name="otp"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                required
+                className="mt-1.5"
+              />
+            </label>
+          )}
+
+          {message && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="text-xs font-bold text-[#D83D63] bg-[#FCE8ED] p-2.5 rounded-lg border border-[#D83D63]/30"
+            >
+              {message}
+            </p>
+          )}
+
+          <Button className="w-full" disabled={busy}>
+            {busy
+              ? 'Please wait…'
+              : {
+                  login: 'Sign in',
+                  signup: 'Create account',
+                  forgot: 'Send reset link',
+                  reset: 'Update password',
+                  verify: 'Verify email',
+                }[mode]}
+          </Button>
+
+          {mode === 'verify' && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              disabled={busy}
+              onClick={(e) => resend(e.currentTarget.form!)}
+            >
+              Send a new code
+            </Button>
+          )}
+        </form>
+
+        {mode === 'login' && (
+          <div className="mt-5 space-y-1.5 text-xs font-bold">
+            <Link className="block text-[#D83D63] hover:underline" href="/forgot-password">
+              Forgot password?
+            </Link>
+            <Link className="block text-[#655F52] hover:underline" href="/verify-email">
+              Verify your email
+            </Link>
+          </div>
+        )}
+
+        <p className="mt-6 text-xs font-semibold text-[#655F52] border-t-2 border-[#111111]/10 pt-4">
+          {mode === 'login' ? (
+            <Link href="/signup" className="hover:text-[#151515]">
+              New to SkillBridge? <span className="text-[#D83D63] font-bold underline">Create an account</span>
+            </Link>
+          ) : (
+            <Link href="/login" className="hover:text-[#151515]">
+              Already have an account? <span className="text-[#D83D63] font-bold underline">Back to sign in</span>
+            </Link>
+          )}
+        </p>
+      </Card>
+    </main>
+  );
+
 }
