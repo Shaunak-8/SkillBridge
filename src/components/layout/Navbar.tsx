@@ -20,7 +20,7 @@ export function Navbar() {
         .then((json) => {
           if (json.profile) setProfile(json.profile);
         })
-        .catch(() => {});
+        .catch(() => { });
     } else {
       setProfile(null);
     }
@@ -43,10 +43,10 @@ export function Navbar() {
   const dashboardUrl = profile?.role === 'business'
     ? '/business/projects'
     : profile?.role === 'student'
-    ? '/student/projects'
-    : profile?.role === 'admin'
-    ? '/admin/overview'
-    : '/projects';
+      ? '/student/projects'
+      : profile?.role === 'admin'
+        ? '/admin/overview'
+        : '/projects';
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-white/90 backdrop-blur">
