@@ -4,7 +4,7 @@ Login identity lives in the `neon-auth` skill: choose Managed Better Auth, keep 
 
 Fetch https://neon.com/docs/ai/skills/neon-auth/SKILL.md
 
-Until the released CLI catalog includes `neon-auth`, do not run `neon skills -s neon-auth` (unknown names fail). If the neon.com URL is unpublished, fetch https://github.com/neondatabase/agent-skills/blob/main/skills/neon-auth/SKILL.md
+Install through the current CLI catalog with `neon skills -s neon-auth`. Without the CLI, use the URL above. If the neon.com URL is unpublished, fetch https://github.com/neondatabase/agent-skills/blob/main/skills/neon-auth/SKILL.md
 
 Implementation:
 

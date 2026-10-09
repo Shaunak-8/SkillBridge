@@ -16,6 +16,12 @@ describe('Input and redirect security', () => {
   it('normalizes usernames case-insensitively', () => expect(username('Aarav_123')).toBe('aarav_123'));
   it.each(['ab', 'user-name', 'a'.repeat(31), "x'; DROP TABLE users;"])('rejects invalid username %s', value => expect(() => username(value)).toThrow());
   it('validates email', () => { expect(email('USER@example.com')).toBe('user@example.com'); expect(() => email('bad')).toThrow(); });
+  it('trims email before validating length and format', () => {
+    expect(email(`${' '.repeat(300)}USER@example.com${' '.repeat(300)}`)).toBe('user@example.com');
+    expect(() => email(' user @example.com ')).toThrow();
+    expect(() => email(`${'a'.repeat(255)}@example.com`)).toThrow();
+    expect(() => email(null)).toThrow();
+  });
   it.each(['short', 'alllowercase123!', 'ALLUPPERCASE123!', 'NoNumbersHere!', 'NoSymbolsHere123'])('rejects weak password %s', value => expect(() => password(value)).toThrow());
   it('accepts a strong password', () => expect(password('LongPassword123!')).toBe('LongPassword123!'));
   it.each(['admin', 'owner', null])('blocks self-assigned role %s', value => expect(() => onboardingRole(value)).toThrow());

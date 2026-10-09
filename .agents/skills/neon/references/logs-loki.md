@@ -40,22 +40,24 @@ This is a read-only Loki-compatible subset, not a push endpoint or complete Loki
 
 The paths above are the ones to call directly. A Loki client that builds its own paths — a Grafana data source appends `/loki/api/v1` to whatever URL it is given — may need a different root, so confirm the data-source URL against the Neon docs rather than pasting this base.
 
-In TypeScript applications, use `@neon/sdk`. Project and branch are positional, and `query` returns a lazy paginated iterable rather than a promise:
+In TypeScript applications, use `@neon/sdk`. Pass project and branch in parameter objects, and `query` returns a lazy paginated iterable rather than a promise:
 
 ```typescript
-for await (const record of neon.logs.query(projectId, branchId, {
+for await (const record of neon.logs.query({
+  projectId,
+  branchId,
   since: "1h",
   source: "function",
 })) {
   console.log(record.timestamp, record.severity_text, record.message);
 }
 
-const { data: fields } = await neon.logs.fields(projectId, branchId);
-const { data: serviceNames } = await neon.logs.fieldValues(
+const { data: fields } = await neon.logs.fields({ projectId, branchId });
+const { data: serviceNames } = await neon.logs.fieldValues({
   projectId,
   branchId,
-  "service_name",
-);
+  fieldName: "service_name",
+});
 ```
 
 `query`'s iterator always throws on error, but `fields` and `fieldValues` follow the client's `throwOnError`, which defaults to `false` and hands back `{ data, error }`. `fieldValues` resolves to the whole response, not a bare array: read `serviceNames.values`, and treat them as an arbitrary subset whenever `serviceNames.is_truncated` is true.

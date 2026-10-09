@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authConfigured, getAuth } from '@/lib/auth/server';
 import { database } from '@/lib/db';
 import { email, password, username } from '@/lib/auth/validation';
-import { rateLimit, sameOrigin } from '@/lib/auth/security';
+import { applicationOrigin, rateLimit, sameOrigin } from '@/lib/auth/security';
 import { ensureProfile } from '@/lib/auth/ensure-profile';
 
 type Context = { params: Promise<{ path: string[] }> };
@@ -25,21 +25,27 @@ export async function POST(request: NextRequest, context: Context) {
     if (raw.length > 16384) return Response.json({ message: 'Request is too large.' }, { status: 413 });
     const body = raw ? JSON.parse(raw) : {};
     if (!body || typeof body !== 'object' || Array.isArray(body)) return Response.json({ message: 'Invalid request.' }, { status: 400 });
+    let signupUsername: string | undefined;
     if (path === 'sign-up/email') {
-      email(body.email); password(body.password);
-      const name = username(body.name);
-      const existing = await database()`SELECT id FROM skillbridge.profiles WHERE lower(username) = ${name}`;
-      if (existing.length) return Response.json({ message: 'That username is taken. Choose another.' }, { status: 409 });
+      body.email = email(body.email); password(body.password);
+      signupUsername = username(body.name);
     }
-    if (path === 'sign-in/email' || path === 'request-password-reset') email(body.email);
+    if (path === 'sign-in/email' || path === 'request-password-reset') body.email = email(body.email);
     if (path === 'reset-password') password(body.newPassword);
     for (const key of ['callbackURL', 'newUserCallbackURL', 'errorCallbackURL', 'redirectTo']) {
-      if (body[key] && new URL(body[key], process.env.APP_URL).origin !== new URL(process.env.APP_URL!).origin) throw new Error('Invalid redirect.');
+      if (body[key] !== undefined && (typeof body[key] !== 'string' || new URL(body[key], applicationOrigin()).origin !== applicationOrigin())) throw new Error('Invalid redirect.');
     }
-    const identity = typeof body.email === 'string' ? body.email.toLowerCase() : 'shared';
+    const identity = typeof body.email === 'string' ? body.email.trim().toLowerCase() : 'shared';
     if (path !== 'sign-out' && !await rateLimit(`global:${path}`, 'shared', 1000)) return Response.json({ message: 'Too many attempts. Try again later.' }, { status: 429 });
     if (path !== 'sign-out' && !await rateLimit(path, identity, identity === 'shared' ? 100 : 10)) return Response.json({ message: 'Too many attempts. Try again later.' }, { status: 429 });
-    const response = await getAuth().handler().POST(request, context);
+    if (signupUsername) {
+      const existing = await database()`SELECT id FROM skillbridge.profiles WHERE lower(username) = ${signupUsername}`;
+      if (existing.length) return Response.json({ message: 'That username is taken. Choose another.' }, { status: 409 });
+    }
+    const headers = new Headers(request.headers);
+    headers.delete('content-length');
+    const normalizedRequest = new NextRequest(request, { headers, body: JSON.stringify(body) });
+    const response = await getAuth().handler().POST(normalizedRequest, context);
     if (path === 'sign-up/email' && response.ok) {
       const result = await response.clone().json();
       if (result.user?.id && result.user?.email) await ensureProfile(result.user);

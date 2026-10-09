@@ -2,9 +2,11 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { database } from '@/lib/db';
 
+export function applicationOrigin() {
+  return new URL(process.env.APP_URL || 'http://localhost:3000').origin;
+}
 export function sameOrigin(request: Request) {
-  const expected = new URL(process.env.APP_URL || 'http://localhost:3000').origin;
-  return request.headers.get('origin') === expected;
+  return request.headers.get('origin') === applicationOrigin();
 }
 // Shared, atomic Postgres limiter. Never trust client-supplied IP headers.
 export async function rateLimit(bucket: string, identity: string, limit = 10) {

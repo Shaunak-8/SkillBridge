@@ -48,7 +48,7 @@ After create, report the `project_id`, `project_expires_at`, and any denied capa
 
 Do not mint a claim URL until the human is ready. Opening the URL does not freeze access. Continuing to Neon starts the transfer and rotates `DATABASE_URL`. Existing access tokens are revoked. Auth and the Data API stay enabled when they were granted.
 
-A claim code expires in `expires_in` seconds (15 minutes / 900 today). If the unused code expires, mint another: `neon claim accept --no-open` or `POST /v1/projects/{id}/claim`. Each mint cancels the previous unused code. You can mint several times; only the latest unused code works. Re-issue only while `project_expires_at` is still in the future.
+A claim code expires in `expires_in` seconds (15 minutes / 900 today). If the unused code expires, mint another: `neon claim accept --no-open` or `POST /v1/projects/{id}/claim`. Each mint cancels the previous unused code. You can mint several times; only the latest unused code works. Re-issue only while the project expiration (`project.expires_at` in REST responses or `project_expires_at` in CLI output) is still in the future.
 
 Continuing to Neon starts a transfer with a new 15-minute window and leaves the project key and database password revoked. If that window expires before the human accepts, mint again. Do not restore pre-claim `DATABASE_URL`.
 
