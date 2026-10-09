@@ -7,6 +7,8 @@ import { businessRequest, FormError } from '@/lib/business/client';
 import { FormField, controlClass } from './FormField';
 import { useSpeechToText, useTextToSpeech } from '@/lib/utils/speech';
 
+const GENERATION_STEPS = ['Reading your problem…', 'Finding similar project templates…', 'Writing your brief…', 'Checking the details…'];
+const STEP_MS = 2500;
 export function ProblemForm({ business }: { business: BusinessProfile }) {
   const router = useRouter();
   const [problem, setProblem] = useState('');
