@@ -1,0 +1,10 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+vi.mock('server-only', () => ({}));
+const sql = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/db', () => ({ database: () => sql }));
+import { ensureProfile } from '@/lib/auth/ensure-profile';
+beforeEach(() => { vi.clearAllMocks(); sql.mockResolvedValue([]); });
+it('uses the immutable Auth identity and a normalized username', async () => { await ensureProfile({ id: 'account-id', email: 'user@example.com', name: 'AARAV' }); expect(sql.mock.calls[0].slice(1)).toContain('account-id'); expect(sql.mock.calls[0].slice(1)).toContain('aarav'); });
+it('handles Google display names without exposing email in a username', async () => { await ensureProfile({ id: 'google-account', email: 'user@example.com', name: 'Aarav Mehta' }); expect(sql.mock.calls[0][2]).toMatch(/^member_[a-f0-9]{20}$/); });
+it('recovers from a concurrent username claim using a stable fallback', async () => { sql.mockRejectedValueOnce({ code: '23505' }).mockResolvedValueOnce([]); await ensureProfile({ id: 'account-id', email: 'user@example.com', name: 'aarav' }); expect(sql).toHaveBeenCalledTimes(2); expect(sql.mock.calls[1][2]).toMatch(/^member_[a-f0-9]{20}$/); });
+it('propagates database failure rather than pretending a profile exists', async () => { sql.mockRejectedValueOnce({ code: '08006' }); await expect(ensureProfile({ id: 'account-id', email: 'user@example.com', name: 'aarav' })).rejects.toEqual({ code: '08006' }); });
