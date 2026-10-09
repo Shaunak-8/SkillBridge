@@ -6,19 +6,19 @@ import { SkillBadge } from "@/components/shared/ProjectCard";
 import { DbError, EmptyState, WhyMatch } from "@/components/ws5/parts";
 import { currentProfile } from "@/lib/auth/profile";
 import { recommendProjectsForStudent } from "@/lib/matching/rank";
-import { loadPublishedProjects, loadStudentByProfile, retrieverForStudent } from "@/lib/ws5/repo";
+import { loadStudentRecommendationInput } from "@/lib/ws5/repo";
 
 export const dynamic = "force-dynamic";
 
 async function Recommended() {
   try {
     const profileId = (await currentProfile())?.profile?.id;
-    const student = profileId ? await loadStudentByProfile(profileId) : null;
-    if (!student) return <EmptyState>Complete your student profile to get recommendations. <Link href="/student/profile" className="font-semibold text-brand">Open profile</Link></EmptyState>;
-    const projects = await loadPublishedProjects();
+    const input = profileId ? await loadStudentRecommendationInput(profileId) : null;
+    if (!input) return <EmptyState>Complete your student profile to get recommendations. <Link href="/student/profile" className="font-semibold text-brand">Open profile</Link></EmptyState>;
+    const { student, projects, retriever } = input;
     const byId = new Map(projects.map((p) => [p.id, p]));
     // Own view: private visibility must not hide results from the student themselves.
-    const results = recommendProjectsForStudent({ ...student, visibility: "matching" }, projects, {}, await retrieverForStudent(student.id, projects.map((p) => p.id)));
+    const results = recommendProjectsForStudent({ ...student, visibility: "matching" }, projects, {}, retriever);
     if (!results.length) return <EmptyState>No matching projects yet. Add skills and portfolio items to your profile, or <Link href="/projects" className="font-semibold text-brand">browse all projects</Link>.</EmptyState>;
     return <div className="grid gap-5 md:grid-cols-2">{results.map((r) => {
       const p = byId.get(r.id)!;

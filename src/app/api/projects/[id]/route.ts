@@ -1,4 +1,6 @@
+import { revalidateTag } from 'next/cache';
 import { apiError, ApiFailure, requireApiIdentity, requireOwnership } from '@/lib/api';
+import { PROJECTS_BOARD_TAG } from '@/lib/ws5/cache-tags';
 import { database } from '@/lib/db';
 import { sameOrigin } from '@/lib/auth/security';
 import { jsonBody, uuid, textField, textList } from '@/lib/validation';
@@ -51,6 +53,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const rows = await database()`UPDATE skillbridge.projects SET status = ${status}, published_at = CASE WHEN ${status} = 'published' THEN COALESCE(published_at, now()) ELSE published_at END
       WHERE id = ${id} AND owner_profile_id = ${current.profile.id} AND status = ${project.status} AND brief_version = ${project.brief_version} RETURNING *`;
     if (!rows[0]) throw new ApiFailure(409, 'CONFLICT', 'Project changed. Reload and retry.');
+    // Publishing, closing or cancelling changes what the public board shows. Best effort: the board also
+    // expires on its own (see PROJECTS_BOARD_REVALIDATE_SECONDS), so a failed invalidation must not fail the request.
+    try { revalidateTag(PROJECTS_BOARD_TAG, 'max'); } catch { /* no Next.js request context (e.g. unit tests) */ }
     return Response.json({ project: projectBrief(rows[0]) });
   } catch (error) {
     if (error instanceof Error && error.message.includes('Required questions are unanswered')) return apiError(new ApiFailure(409, 'PROJECT_NOT_READY', 'Answer all required questions before publishing.'));
