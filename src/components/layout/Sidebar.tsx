@@ -1,8 +1,15 @@
 import Link from "next/link";
-import { BarChart3, BriefcaseBusiness, ClipboardCheck, FolderKanban, LayoutDashboard, Settings, Sparkles, Users } from "lucide-react";
+import { BarChart3, BriefcaseBusiness, ClipboardCheck, FolderKanban, LayoutDashboard, Settings, Sparkles, UserCheck, Users } from "lucide-react";
 import type { Role } from "@/types";
 const links: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
-  student: [{ href: "/student/dashboard", label: "Overview", icon: LayoutDashboard }, { href: "/student/projects", label: "Find projects", icon: FolderKanban }, { href: "/student/applications", label: "Applications", icon: ClipboardCheck }, { href: "/student/my-projects", label: "My projects", icon: BriefcaseBusiness }, { href: "/student/assessments", label: "Assessments", icon: BarChart3 }],
+  student: [
+    { href: "/student/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/student/profile", label: "Profile & Portfolio", icon: UserCheck },
+    { href: "/student/projects", label: "Find projects", icon: FolderKanban },
+    { href: "/student/applications", label: "Applications", icon: ClipboardCheck },
+    { href: "/student/my-projects", label: "My projects", icon: BriefcaseBusiness },
+    { href: "/student/assessments", label: "Assessments", icon: BarChart3 }
+  ],
   business: [{ href: "/business/dashboard", label: "Overview", icon: LayoutDashboard }, { href: "/business/projects", label: "My projects", icon: FolderKanban }, { href: "/business/post-problem", label: "Post a problem", icon: Sparkles }, { href: "/business/screening", label: "AI screening", icon: ClipboardCheck }, { href: "/business/billing", label: "Billing", icon: BriefcaseBusiness }],
   admin: [{ href: "/admin/dashboard", label: "Overview", icon: LayoutDashboard }, { href: "/admin/users", label: "Users", icon: Users }, { href: "/admin/projects", label: "Projects", icon: FolderKanban }],
 };
