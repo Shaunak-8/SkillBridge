@@ -1,8 +1,43 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Clock3, MapPin, Users } from "lucide-react";
+import { ArrowLeft, MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
-import { Badge, Button, Card, SectionTitle } from "@/components/ui";
-import { ProjectStatusBadge, SkillBadge } from "@/components/shared/ProjectCard";
-import { projects } from "@/data/mock-data";
-export function generateStaticParams() { return projects.map((p) => ({ id: p.id })); }
-export default async function ProjectDetail({ params }: { params: Promise<{ id: string }> }) { const { id } = await params; const project = projects.find((p) => p.id === id); if (!project) notFound(); return <main className="mx-auto max-w-5xl px-5 py-10"><Link href="/projects" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-brand"><ArrowLeft size={16} /> Back to projects</Link><div className="grid gap-8 lg:grid-cols-[1fr_310px]"><div><div className="mb-5 flex flex-wrap items-center gap-2"><Badge>{project.category}</Badge><ProjectStatusBadge status={project.status} /></div><SectionTitle title={project.title} description={project.summary} /><div className="flex flex-wrap gap-5 border-y border-line py-5 text-sm text-muted"><span className="flex items-center gap-2"><MapPin size={16} />{project.location}</span><span className="flex items-center gap-2"><Clock3 size={16} />{project.duration}</span><span className="flex items-center gap-2"><Users size={16} />{project.mode === "team" ? "Team project" : "Individual project"}</span></div><h2 className="mt-9 text-lg font-bold">About the project</h2><p className="mt-3 leading-7 text-muted">{project.description}</p><h2 className="mt-9 text-lg font-bold">Skills we&apos;re looking for</h2><div className="mt-4 flex flex-wrap gap-2">{project.requirements.map((r) => <SkillBadge key={r.id} name={`${r.skill.name} · ${r.level}`} type={r.skill.type} />)}</div>{project.milestones.length > 0 && <><h2 className="mt-9 text-lg font-bold">Early milestones</h2><div className="mt-4 space-y-3">{project.milestones.map((m) => <div key={m.id} className="flex items-center gap-3 rounded-xl border border-line bg-white p-4"><CheckCircle2 className="text-brand" size={18} /><div><p className="text-sm font-semibold">{m.title}</p><p className="text-xs text-muted">Due {m.dueDate}</p></div></div>)}</div></>}</div><Card className="h-fit p-5 lg:sticky lg:top-6"><p className="text-sm text-muted">Posted by</p><h3 className="mt-2 text-lg font-bold">{project.businessName}</h3><p className="mt-1 text-sm text-muted">Local business · Verified profile</p><div className="my-5 border-t border-line pt-5"><p className="text-xs text-muted">Project format</p><p className="mt-1 font-semibold">{project.budgetLabel}</p></div><Link href="/register"><Button className="w-full">Apply for this project</Button></Link><p className="mt-3 text-center text-xs text-muted">Create a free student profile to apply.</p></Card></div></main>; }
+import { Badge, Card, SectionTitle } from "@/components/ui";
+import { SkillBadge } from "@/components/shared/ProjectCard";
+import { ApplyForm } from "@/components/ws5/actions";
+import { DbError } from "@/components/ws5/parts";
+import { currentProfile } from "@/lib/auth/profile";
+import { isUuid } from "@/lib/ws5/guard";
+import { loadProject } from "@/lib/ws5/repo";
+
+export const dynamic = "force-dynamic";
+
+export default async function ProjectDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!isUuid(id)) notFound();
+  let project, role: string | null = null;
+  try {
+    project = await loadProject(id);
+    role = (await currentProfile())?.profile?.role ?? null;
+  } catch { return <main className="mx-auto max-w-5xl px-5 py-10"><DbError /></main>; }
+  if (!project || project.status !== "published") notFound();
+
+  return <main className="mx-auto max-w-5xl px-5 py-10">
+    <Link href="/projects" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-brand"><ArrowLeft size={16} /> Back to projects</Link>
+    <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+      <div>
+        <div className="mb-5 flex flex-wrap items-center gap-2"><Badge>{project.category}</Badge><Badge tone="green">Open</Badge>{project.remoteOk && <Badge tone="blue">Remote OK</Badge>}</div>
+        <SectionTitle title={project.title} description={project.summary} />
+        <div className="flex flex-wrap gap-5 border-y border-line py-5 text-sm text-muted"><span className="flex items-center gap-2"><MapPin size={16} />{project.locationText ?? (project.remoteOk ? "Remote" : "Location flexible")}</span></div>
+        {project.problemStatement && <><h2 className="mt-9 text-lg font-bold">About the project</h2><p className="mt-3 whitespace-pre-line leading-7 text-muted">{project.problemStatement}</p></>}
+        {project.requiredSkills.length > 0 && <><h2 className="mt-9 text-lg font-bold">Skills we&apos;re looking for</h2><div className="mt-4 flex flex-wrap gap-2">{project.requiredSkills.map((s) => <SkillBadge key={s} name={s} />)}</div></>}
+      </div>
+      <Card className="h-fit p-5 lg:sticky lg:top-6">
+        <h3 className="text-lg font-bold">Apply</h3>
+        <p className="mb-4 mt-1 text-sm text-muted">The business reviews every application and makes the final decision.</p>
+        {role === "student" ? <ApplyForm projectId={project.id} />
+          : role ? <p className="text-sm text-muted">Only student accounts can apply to projects.</p>
+          : <><Link href="/login" className="inline-flex w-full items-center justify-center rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">Sign in to apply</Link><p className="mt-3 text-center text-xs text-muted">New here? <Link href="/register" className="font-semibold text-brand">Create a student profile</Link></p></>}
+      </Card>
+    </div>
+  </main>;
+}

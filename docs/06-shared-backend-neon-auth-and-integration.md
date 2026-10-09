@@ -1,5 +1,7 @@
 # Workstream 6 — Shared Backend, Neon, Auth & Integration
 
+Implementation and local setup: [Shared backend contracts and verification](SHARED-BACKEND.md). Authentication is implemented; shared migrations, API helpers, contracts, seed data, and live database tests are now available. Full feature-owned AI/RAG and authenticated browser flows remain integration work.
+
 ## Objective
 Own the shared technical foundations and keep the six workstreams compatible: database schema/migrations, authentication/session helpers, authorization conventions, shared API types, and end-to-end integration. This role coordinates and reviews shared contracts; it should not become the sole implementer of every feature's backend.
 

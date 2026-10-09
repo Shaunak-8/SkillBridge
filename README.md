@@ -1,11 +1,13 @@
-# skillbridge
+# SkillBridge
 
-Skills-first project matching for local businesses and students. This repository is the initial frontend foundation for Problem Statement 24.
+Skills-first project matching for local businesses and students, with Neon Auth and server-side role protection. Built for Problem Statement 24.
 
 ## Run locally
 
 ```bash
 npm install
+cp .env.example .env.local
+npm run db:migrate
 npm run dev
 ```
 
@@ -15,7 +17,11 @@ Validation commands:
 
 ```bash
 npm run typecheck
+npm run lint
+npm test
 npm run build
+npm run test:browser
+npm run check:client-secrets
 ```
 
 ## Architecture
@@ -24,24 +30,33 @@ npm run build
 - `src/components`: reusable UI primitives, public navigation, dashboard shell, cards, badges, and role pages.
 - `src/data/mock-data.ts`: clearly isolated demo data and replaceable service boundary.
 - `src/types`: shared domain contracts for users, skills, projects, teams, applications, assessments, submissions, feedback, and screening.
-- `src/lib`: utilities and future Supabase integration boundary.
+- `src/lib/auth`: Neon Auth clients, session checks, profile creation, validation, CSRF checks, and shared rate limiting.
+- `src/lib/db.ts`: server-only Neon Postgres access.
+- `migrations`: additive application migrations. Neon Auth-managed tables are never modified.
 
-Server Components are used by default. The project board uses a Client Component only for search and category filtering. Authentication, AI workflows, payments, and production database operations are intentionally not implemented in this phase.
+Server Components are used by default. Authentication, profiles, the public project board/detail pages, and shared project/application APIs use live Neon services. Other dashboards, AI workflows, and payments still use demo content or placeholders. See [authentication setup](AUTHENTICATION.md) and [shared backend setup](docs/SHARED-BACKEND.md) for configuration and validation commands. Set environment values before running migrations. Preserve an existing `.env.local` instead of copying the example over it.
+
+Business owners can describe a problem, generate a brief with Member 2's Gemini service, edit and save it, answer verification questions, confirm the current version (`/api/projects/[id]/confirm`), and publish it (`PATCH /api/projects/[id]` with `{status:'published'}`, the single publish path). Voice transcription is unavailable; typed input is supported. See [business implementation and integration report](docs/workstream-1-implementation.md). `npm run db:inspect:business` checks business-schema compatibility and `npm run check:ai` checks real model output without connecting to Neon.
 
 ## Implemented
 
+- Neon email/password and Google authentication, verification codes, password recovery/reset, account linking, persistent sessions, and logout.
+- Transactional, idempotent profiles, unique case-insensitive usernames, and one-time Student/Business onboarding.
+- Server-side Student, Business, and Admin page/API authorization; Admin is never self-selectable.
 - Responsive landing, about, auth, project board, and project detail pages.
 - Six diverse student profiles, four local businesses, eight projects, applications, milestones, and assessment demo data.
 - Student, business, and admin dashboards with shared sidebar/navigation.
 - Student profile, projects, applications, assessments, and active project views.
-- Business profile, projects, post-problem form, application/workspace routes, screening preview, and billing placeholder.
+- Business onboarding/profile, real dashboard counts, saved drafts, brief review/editing, required verification answers, versioned confirmation, and protected publishing. Member 5's business application review, status actions, candidate suggestions, and discovery/application APIs are integrated. Workspace and billing remain pending.
 - Admin dashboard, users, and projects views.
 - Skills-first matching language, technical and non-technical skill badges, empty/loading-ready visual patterns, form validation attributes, and `.env.example`.
 
 ## Next steps
 
-1. Connect Supabase Auth and RLS policies around the role boundaries.
-2. Replace `src/data/mock-data.ts` with typed Supabase queries and storage uploads.
+Shared migrations, API helpers/contracts, Neon-backed public project pages, seed data, and database verification are documented in [Shared backend setup](docs/SHARED-BACKEND.md).
+
+1. Replace `src/data/mock-data.ts` with authorized server-side Neon Postgres queries.
+2. Connect application uploads to a suitable storage service.
 3. Add server actions for applications, project milestones, deliverables, and feedback.
 4. Integrate AI screening and resume/portfolio analysis behind explicit business consent and billing.
-5. Add production test coverage and error/loading route states.
+5. Complete production OAuth/SMTP configuration and the remaining Google consent tests in the authentication guide.

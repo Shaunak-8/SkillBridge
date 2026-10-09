@@ -1,0 +1,37 @@
+import { beforeAll,afterAll,beforeEach,expect,it,vi } from 'vitest';
+import { fixtureDatabase,fixtureOwner } from './fixtures/postgres';
+vi.mock('server-only',()=>({}));
+const mock=vi.hoisted(()=>({db:vi.fn(),profile:vi.fn()}));
+vi.mock('@/lib/db',()=>({database:()=>mock.db()}));
+vi.mock('@/lib/auth/profile',()=>({currentProfile:mock.profile}));
+vi.mock('@/lib/auth/security',async original=>({...await original<typeof import('@/lib/auth/security')>(),rateLimit:async()=>true}));
+import { POST as generate } from '@/app/api/business/generate/route';
+import { POST as answer } from '@/app/api/projects/[id]/answers/route';
+import { POST as confirm } from '@/app/api/projects/[id]/confirm/route';
+import { PATCH as setStatus } from '@/app/api/projects/[id]/route';
+import { saveBusiness,getProject } from '@/lib/business/service';
+let fixture:Awaited<ReturnType<typeof fixtureDatabase>>;
+const draft={title:'Shop order tracker',problem_statement:'Customer orders are difficult to track at our local shop.',business_goal:'Track each order through completion.',category:'Retail',mode:'individual',proposed_deliverables:['Order list and status screen'],required_skills:[{skillName:'Web development'}],open_questions:['Which order statuses do you need?'],language:'en'};
+const request=(body:unknown)=>new Request('http://localhost:3000/api',{method:'POST',headers:{origin:'http://localhost:3000'},body:JSON.stringify(body)});
+const ctx=(id:string)=>({params:Promise.resolve({id})});
+beforeAll(async()=>{fixture=await fixtureDatabase();mock.db.mockReturnValue(fixture.sql);mock.profile.mockResolvedValue({user:{emailVerified:true},profile:{id:fixtureOwner,role:'business',onboarding_completed:true}});await saveBusiness(fixtureOwner,{business_name:'Fixture shop',business_type:'Retail',location:'Pune',preferred_language:'en'});},30000);
+afterAll(async()=>{await fixture?.pg.close();vi.unstubAllGlobals();vi.unstubAllEnvs();});
+beforeEach(()=>{vi.stubEnv('APP_URL','http://localhost:3000');vi.stubEnv('DATABASE_URL',undefined);vi.stubEnv('GEMINI_API_KEY','synthetic-fixture-key');vi.stubGlobal('fetch',vi.fn(async (url:string)=>url.includes('embedContent')?Response.json({}, {status:503}):Response.json({candidates:[{content:{parts:[{text:JSON.stringify(draft)}]}}]})));});
+it('generates a stable draft, saves questions, advances answered versions and publishes only the reviewed version',async()=>{
+  const response=await generate(request({problem:draft.problem_statement,preferred_language:'en'}));expect(response.status).toBe(200);
+  let project=(await response.json()).data;expect(project.id).toBeTruthy();expect(project.status).toBe('draft');expect(project.questions).toHaveLength(1);expect(project.owner_confirmed).toBe(false);
+  expect((await confirm(request({briefVersion:project.brief_version}),ctx(project.id))).status).toBe(409);
+  const saved=await answer(request({questionId:project.questions[0].id,answerText:'Received, packing, completed',briefVersion:project.brief_version}),ctx(project.id));expect(saved.status).toBe(200);
+  const version=(await saved.json()).briefVersion;expect(version).toBeGreaterThan(project.brief_version);
+  expect((await confirm(request({briefVersion:project.brief_version}),ctx(project.id))).status).toBe(409);
+  expect((await confirm(request({briefVersion:version}),ctx(project.id))).status).toBe(200);
+  expect((await setStatus(new Request('http://localhost:3000/api',{method:'PATCH',headers:{origin:'http://localhost:3000'},body:JSON.stringify({status:'published',briefVersion:version})}),ctx(project.id))).status).toBe(200);project=await getProject(fixtureOwner,project.id);expect(project.status).toBe('published');expect(project.questions[0].answer).toContain('completed');
+});
+it('regenerates the same draft, replaces questions and rejects a stale replacement',async()=>{
+  const first=(await(await generate(request({problem:draft.problem_statement,preferred_language:'en'}))).json()).data;
+  const response=await generate(request({problem:'We now need to track payments on each shop order.',preferred_language:'en',project_id:first.id,brief_version:first.brief_version}));expect(response.status).toBe(200);
+  const second=(await response.json()).data;expect(second.id).toBe(first.id);expect(second.brief_version).toBeGreaterThan(first.brief_version);expect(second.questions[0].id).not.toBe(first.questions[0].id);
+  expect((await generate(request({problem:draft.problem_statement,preferred_language:'en',project_id:first.id,brief_version:first.brief_version}))).status).toBe(409);
+  expect((await getProject(fixtureOwner,first.id)).brief_version).toBe(second.brief_version);
+});
+it('never presents Member 2 offline fallback as a successful AI draft',async()=>{vi.stubEnv('GEMINI_API_KEY',undefined);expect((await generate(request({problem:draft.problem_statement,preferred_language:'en'}))).status).toBe(503);});
