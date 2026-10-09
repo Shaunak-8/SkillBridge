@@ -5,6 +5,7 @@ import { businessPage } from "@/lib/business/pages";
 import { SkillBadge } from "@/components/shared/ProjectCard";
 import { ApplicationStatusScope, LiveStatusActions, LiveStatusBadge } from "@/components/ws5/status-scope";
 import { DbError, EmptyState, WhyMatch } from "@/components/ws5/parts";
+import { QuizPanel } from "@/components/quiz/business/QuizPanel";
 import type { ApplicationStatus } from "@/lib/applications/status";
 import { isEligible, recommendStudentsForProject } from "@/lib/matching/rank";
 import { isUuid } from "@/lib/ws5/guard";
@@ -36,6 +37,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return <>
     <SectionTitle eyebrow={project.title} title="Applications" description="Review applicants and decide who to move forward. Suggestions are a starting point - you make the final decision." />
     <Link href={`/business/projects/${id}`} className="mb-4 inline-flex min-h-11 items-center text-sm font-semibold text-brand">Back to project</Link>
+    <QuizPanel projectId={id} />
     {apps.total > 50 && <p className="mb-4 text-sm text-muted">Showing the 50 most recent applications.</p>}
     {apps.items.length === 0 ? <EmptyState>No applications yet.</EmptyState> : <div className="space-y-4">{apps.items.map((a) => {
       const ev = isEligible(project, { ...a.student, visibility: "matching" }) ? recommendStudentsForProject(project, [{ ...a.student, visibility: "matching" }], {}, retriever)[0] : undefined;

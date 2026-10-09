@@ -32,3 +32,6 @@ pnpm-debug.log*
 *.tsbuildinfo
 test-results/
 playwright-report/
+
+# mediapipe wasm (copied from node_modules by scripts/copy-mediapipe-assets.mjs)
+public/mediapipe/wasm/
