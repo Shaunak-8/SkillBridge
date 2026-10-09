@@ -1,0 +1,520 @@
+{
+ "students": [
+  {
+   "id": "s1",
+   "displayName": "Aarav Mehta",
+   "bio": "I turn messy workflows into simple, friendly digital products.",
+   "skills": [
+    "React",
+    "Data analytics",
+    "Graphic design"
+   ],
+   "interests": [
+    "Food & beverage",
+    "Product design"
+   ],
+   "preferredCategories": [
+    "Web development",
+    "Data & analytics"
+   ],
+   "availabilityHoursPerWeek": 10,
+   "remotePreference": "either",
+   "visibility": "public",
+   "portfolio": [
+    {
+     "title": "Campus canteen pre-order app",
+     "description": "Mobile-first ordering UI for a college canteen.",
+     "skillsUsed": [
+      "React",
+      "Graphic design"
+     ]
+    },
+    {
+     "title": "Hostel mess feedback dashboard",
+     "description": "Charts of weekly meal ratings.",
+     "skillsUsed": [
+      "Data analytics",
+      "React"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s2",
+   "displayName": "Maya Shah",
+   "bio": "Product, food and lifestyle photographer helping local brands look their best.",
+   "skills": [
+    "Photography",
+    "Graphic design",
+    "Social media"
+   ],
+   "interests": [
+    "Fashion",
+    "Food & beverage"
+   ],
+   "preferredCategories": [
+    "Photography",
+    "Marketing"
+   ],
+   "availabilityHoursPerWeek": 6,
+   "remotePreference": "onsite",
+   "visibility": "matching",
+   "portfolio": [
+    {
+     "title": "Thrift store lookbook",
+     "description": "Editorial product photo set for a thrift store.",
+     "skillsUsed": [
+      "Photography",
+      "Graphic design"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s3",
+   "displayName": "Kabir Rao",
+   "bio": "I find patterns in data and build tools that help teams make better decisions.",
+   "skills": [
+    "Data analytics",
+    "AI / ML",
+    "React"
+   ],
+   "interests": [
+    "Retail",
+    "Machine learning"
+   ],
+   "preferredCategories": [
+    "Data & analytics",
+    "Web development"
+   ],
+   "availabilityHoursPerWeek": 15,
+   "remotePreference": "remote",
+   "visibility": "public",
+   "portfolio": [
+    {
+     "title": "Sales forecasting notebook",
+     "description": "Weekly demand forecast for a stationery shop.",
+     "skillsUsed": [
+      "Data analytics",
+      "AI / ML"
+     ]
+    },
+    {
+     "title": "Reorder alert prototype",
+     "description": "Small web tool flagging low stock.",
+     "skillsUsed": [
+      "React",
+      "Data analytics"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s4",
+   "displayName": "Nisha Kulkarni",
+   "bio": "Experimenting with regional ingredients and documenting every delicious result.",
+   "skills": [
+    "Baking",
+    "Menu development",
+    "Social media"
+   ],
+   "interests": [
+    "Regional cuisine",
+    "Food & beverage"
+   ],
+   "preferredCategories": [
+    "Culinary"
+   ],
+   "availabilityHoursPerWeek": 12,
+   "remotePreference": "onsite",
+   "visibility": "public",
+   "portfolio": [
+    {
+     "title": "Millet bakes recipe series",
+     "description": "Twelve tested millet-based recipes with photos.",
+     "skillsUsed": [
+      "Baking",
+      "Menu development"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s5",
+   "displayName": "Zoya Khan",
+   "bio": "I help neighborhood businesses build genuine relationships online and offline.",
+   "skills": [
+    "Social media",
+    "Copywriting",
+    "Event planning"
+   ],
+   "interests": [
+    "Community",
+    "Local brands"
+   ],
+   "preferredCategories": [
+    "Marketing",
+    "Events",
+    "Writing & content"
+   ],
+   "availabilityHoursPerWeek": 8,
+   "remotePreference": "either",
+   "visibility": "matching",
+   "portfolio": [
+    {
+     "title": "Neighborhood bookstore Instagram revamp",
+     "description": "Content calendar and captions for a bookstore.",
+     "skillsUsed": [
+      "Social media",
+      "Copywriting"
+     ]
+    },
+    {
+     "title": "College fest sponsorship drive",
+     "description": "Coordinated vendors and volunteers.",
+     "skillsUsed": [
+      "Event planning"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s6",
+   "displayName": "Dev Menon",
+   "bio": "Shipping pragmatic software, from inventory spreadsheets to production apps.",
+   "skills": [
+    "React",
+    "Data analytics",
+    "Copywriting"
+   ],
+   "interests": [
+    "Small business tools"
+   ],
+   "preferredCategories": [
+    "Web development",
+    "Data & analytics"
+   ],
+   "availabilityHoursPerWeek": 20,
+   "remotePreference": "remote",
+   "visibility": "public",
+   "portfolio": [
+    {
+     "title": "Pharmacy inventory tracker",
+     "description": "Spreadsheet-to-web inventory tool for a pharmacy.",
+     "skillsUsed": [
+      "React",
+      "Data analytics"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s7",
+   "displayName": "Ishita Joshi",
+   "bio": "Civil engineering student who loves drafting layouts and making small spaces work.",
+   "skills": [
+    "CAD drafting",
+    "Space planning",
+    "Graphic design"
+   ],
+   "interests": [
+    "Interiors",
+    "Retail"
+   ],
+   "preferredCategories": [
+    "Design",
+    "Events"
+   ],
+   "availabilityHoursPerWeek": 10,
+   "remotePreference": "onsite",
+   "visibility": "public",
+   "portfolio": [
+    {
+     "title": "Studio apartment layout set",
+     "description": "Floor plans and furniture layouts in AutoCAD.",
+     "skillsUsed": [
+      "CAD drafting",
+      "Space planning"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s8",
+   "displayName": "Rohan Desai",
+   "bio": "Commerce student who enjoys turning receipts into clear books.",
+   "skills": [
+    "Bookkeeping",
+    "Data analytics",
+    "Financial planning"
+   ],
+   "interests": [
+    "Small business",
+    "Retail"
+   ],
+   "preferredCategories": [
+    "Finance",
+    "Data & analytics"
+   ],
+   "availabilityHoursPerWeek": 8,
+   "remotePreference": "remote",
+   "visibility": "matching",
+   "portfolio": [
+    {
+     "title": "Family shop bookkeeping cleanup",
+     "description": "Organized one year of sales into monthly statements.",
+     "skillsUsed": [
+      "Bookkeeping",
+      "Financial planning"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s9",
+   "displayName": "Tanvi Iyer",
+   "bio": "Psychology student who runs surveys and interviews to learn what customers really want.",
+   "skills": [
+    "User research",
+    "Copywriting",
+    "Data analytics"
+   ],
+   "interests": [
+    "Customer experience",
+    "Community"
+   ],
+   "preferredCategories": [
+    "Research",
+    "Writing & content"
+   ],
+   "availabilityHoursPerWeek": 12,
+   "remotePreference": "either",
+   "visibility": "public",
+   "portfolio": [
+    {
+     "title": "Cafe customer interview study",
+     "description": "Ran fifteen interviews and summarized findings.",
+     "skillsUsed": [
+      "User research",
+      "Copywriting"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "s10",
+   "displayName": "Arjun Nair",
+   "bio": "Mechanical engineering student making short videos for local makers.",
+   "skills": [
+    "Video editing",
+    "Photography",
+    "Social media"
+   ],
+   "interests": [
+    "Makers",
+    "Events"
+   ],
+   "preferredCategories": [
+    "Photography",
+    "Marketing",
+    "Events"
+   ],
+   "availabilityHoursPerWeek": 6,
+   "remotePreference": "either",
+   "visibility": "private",
+   "portfolio": [
+    {
+     "title": "Maker fair highlight reel",
+     "description": "Edited a three-minute recap of a local maker fair.",
+     "skillsUsed": [
+      "Video editing",
+      "Photography"
+     ]
+    }
+   ]
+  }
+ ],
+ "projects": [
+  {
+   "id": "p1",
+   "title": "Make our café orders flow",
+   "summary": "Build a simple order management experience for our growing café.",
+   "problemStatement": "We currently manage orders across paper tickets and chat messages. Help us design a lightweight, mobile-first workflow for our counter team.",
+   "category": "Web development",
+   "requiredSkills": [
+    "React",
+    "Graphic design"
+   ],
+   "remoteOk": true,
+   "locationText": "Pune",
+   "status": "published"
+  },
+  {
+   "id": "p2",
+   "title": "A seasonal menu with a story",
+   "summary": "Develop six fresh menu items inspired by local ingredients.",
+   "problemStatement": "We want a small seasonal menu that is delicious, practical for our kitchen and easy for customers to understand.",
+   "category": "Culinary",
+   "requiredSkills": [
+    "Menu development",
+    "Copywriting"
+   ],
+   "remoteOk": false,
+   "locationText": "Pune",
+   "status": "published"
+  },
+  {
+   "id": "p3",
+   "title": "Product photography for our new drop",
+   "summary": "Create a versatile image library for a local clothing collection.",
+   "problemStatement": "We need warm, editorial product and lifestyle photographs for our online shop and launch campaign.",
+   "category": "Photography",
+   "requiredSkills": [
+    "Photography",
+    "Graphic design"
+   ],
+   "remoteOk": false,
+   "locationText": "Mumbai",
+   "status": "published"
+  },
+  {
+   "id": "p4",
+   "title": "Know what is in stock",
+   "summary": "Turn our inventory spreadsheet into a clear, reliable tracker.",
+   "problemStatement": "Create a simple inventory dashboard that helps our small team know what to reorder and when.",
+   "category": "Data & analytics",
+   "requiredSkills": [
+    "Data analytics",
+    "React"
+   ],
+   "remoteOk": true,
+   "locationText": null,
+   "status": "in_progress"
+  },
+  {
+   "id": "p5",
+   "title": "A social launch for Saffron",
+   "summary": "Plan and create a two-week social media campaign.",
+   "problemStatement": "Help us launch our festive menu with a thoughtful content plan, beautiful stories and a way to measure what works.",
+   "category": "Marketing",
+   "requiredSkills": [
+    "Social media",
+    "Photography"
+   ],
+   "remoteOk": true,
+   "locationText": "Nashik",
+   "status": "published"
+  },
+  {
+   "id": "p6",
+   "title": "Recipes that feel like home",
+   "summary": "Develop and document a small collection of regional bakes.",
+   "problemStatement": "We are looking for a curious baker to co-create recipes that bring local ingredients into our display case.",
+   "category": "Culinary",
+   "requiredSkills": [
+    "Baking",
+    "Menu development"
+   ],
+   "remoteOk": false,
+   "locationText": "Nashik",
+   "status": "published"
+  },
+  {
+   "id": "p7",
+   "title": "Tell the Mango & Co. story",
+   "summary": "Shape a clear brand story and refreshed website copy.",
+   "problemStatement": "We have great work and too many words. Help us make our story easier to understand for local businesses.",
+   "category": "Writing & content",
+   "requiredSkills": [
+    "Copywriting",
+    "Social media"
+   ],
+   "remoteOk": true,
+   "locationText": "Bengaluru",
+   "status": "published"
+  },
+  {
+   "id": "p8",
+   "title": "Community makers meetup",
+   "summary": "Design and run a friendly launch event for local makers.",
+   "problemStatement": "Bring makers, customers and curious neighbors together for an afternoon of workshops and good conversations.",
+   "category": "Events",
+   "requiredSkills": [
+    "Event planning",
+    "Social media"
+   ],
+   "remoteOk": false,
+   "locationText": "Bengaluru",
+   "status": "completed"
+  },
+  {
+   "id": "p9",
+   "title": "Redesign our café floor layout",
+   "summary": "Plan a seating layout that fits more guests without feeling crowded.",
+   "problemStatement": "Our small café feels cramped at peak hours. We need a measured floor plan and a few layout options.",
+   "category": "Design",
+   "requiredSkills": [
+    "CAD drafting",
+    "Space planning"
+   ],
+   "remoteOk": false,
+   "locationText": "Pune",
+   "status": "published"
+  },
+  {
+   "id": "p10",
+   "title": "Clean up our books",
+   "summary": "Organize a year of sales and expenses into simple monthly statements.",
+   "problemStatement": "Our records are scattered across notebooks and chat. We want clean monthly books and a basic budget.",
+   "category": "Finance",
+   "requiredSkills": [
+    "Bookkeeping",
+    "Financial planning"
+   ],
+   "remoteOk": true,
+   "locationText": null,
+   "status": "published"
+  },
+  {
+   "id": "p11",
+   "title": "What do our customers think",
+   "summary": "Interview customers and summarize what they value.",
+   "problemStatement": "We assume we know why customers choose us. Help us run interviews and write up the real reasons.",
+   "category": "Research",
+   "requiredSkills": [
+    "User research",
+    "Copywriting"
+   ],
+   "remoteOk": true,
+   "locationText": "Bengaluru",
+   "status": "published"
+  },
+  {
+   "id": "p12",
+   "title": "Festive bake box video",
+   "summary": "Shoot and edit a short video showing our festive bake box.",
+   "problemStatement": "We need a thirty-second vertical video for social media that shows the box being packed.",
+   "category": "Photography",
+   "requiredSkills": [
+    "Video editing",
+    "Photography"
+   ],
+   "remoteOk": false,
+   "locationText": "Nashik",
+   "status": "published"
+  },
+  {
+   "id": "p13",
+   "title": "Loyalty card idea (draft)",
+   "summary": "Rough idea for a digital loyalty card.",
+   "problemStatement": "Not ready to publish. Still working out the scope.",
+   "category": "Web development",
+   "requiredSkills": [
+    "React"
+   ],
+   "remoteOk": true,
+   "locationText": "Pune",
+   "status": "draft"
+  }
+ ]
+}
