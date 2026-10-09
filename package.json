@@ -12,6 +12,7 @@
     "db:inspect": "node scripts/database.mjs",
     "db:migrate": "node scripts/database.mjs --migrate",
     "db:seed": "node scripts/seed.mjs",
+    "db:seed:ws5": "node scripts/seed-ws5.mjs",
     "test:backend": "node scripts/test-backend.mjs",
     "test:integration": "node scripts/test-integration.mjs",
     "test:db": "node scripts/test-database.mjs",
