@@ -27,7 +27,7 @@ it('associates business profile labels and explains supported languages', () => 
 });
 it('preserves a text entry and manual draft route when generation is unavailable', () => {
   const html = renderToStaticMarkup(<ProblemForm business={profile} />);
-  expect(html).toContain('id="problem"'); expect(html).toContain('Generate Project Brief'); expect(html).toContain('Save problem and write a draft'); expect(html).toContain('Voice input is not available yet');
+  expect(html).toContain('id="problem"'); expect(html).toContain('Generate Project Brief'); expect(html).toContain('Save problem and write a draft'); expect(html).toContain('Multilingual Voice');
 });
 it('escapes user content and disables publication of an incomplete unconfirmed draft', () => {
   const html = renderToStaticMarkup(<BriefEditor initial={project} editing />);

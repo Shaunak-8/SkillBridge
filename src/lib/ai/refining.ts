@@ -1,6 +1,7 @@
 import "server-only";
 import { BriefInput } from "@/lib/business/contracts";
 import { translateText } from "@/lib/ai/translator";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/ai/model";
 
 export interface RefinementResult {
   explanation: string;
@@ -84,7 +85,7 @@ Your task:
   // Gemini API branch
   if (geminiApiKey) {
     try {
-      const modelName = process.env.LLM_MODEL || "gemini-2.5-flash-lite";
+      const modelName = process.env.LLM_MODEL || DEFAULT_GEMINI_MODEL;
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
       const res = await fetch(endpoint, {

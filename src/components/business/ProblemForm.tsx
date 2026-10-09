@@ -9,13 +9,16 @@ import { useSpeechToText, useTextToSpeech } from '@/lib/utils/speech';
 
 const GENERATION_STEPS = ['Reading your problem…', 'Finding similar project templates…', 'Writing your brief…', 'Checking the details…'];
 const STEP_MS = 2500;
+type Language = BriefInput['preferred_language'];
+
 export function ProblemForm({ business }: { business: BusinessProfile }) {
   const router = useRouter();
   const [problem, setProblem] = useState('');
-  const [language, setLanguage] = useState(business.preferred_language || 'en');
+  const [language, setLanguage] = useState<Language>((business.preferred_language || 'en') as Language);
   const [pending, setPending] = useState('');
   const [error, setError] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [step, setStep] = useState(0);
 
   const [viewMode, setViewMode] = useState<'original' | 'english'>('original');
   const [translatedText, setTranslatedText] = useState('');
@@ -30,6 +33,13 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
   });
 
   const { isSpeaking, speak, stop: stopSpeaking } = useTextToSpeech();
+
+  // Drafting takes several seconds: walk through what is actually happening so the wait is visible.
+  useEffect(() => {
+    if (pending !== 'generate') { setStep(0); return; }
+    const timer = setInterval(() => setStep(s => Math.min(s + 1, GENERATION_STEPS.length - 1)), STEP_MS);
+    return () => clearInterval(timer);
+  }, [pending]);
 
   useEffect(() => {
     if (!problem) return;
@@ -79,7 +89,7 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
       }
       const brief: BriefInput = {
         title: '', summary: '', problem_statement: parsed.data.problem, category: business.business_type,
-        deliverables: [], required_skills: [], budget_label: '', timeline: '', preferred_language: language as any,
+        deliverables: [], required_skills: [], budget_label: '', timeline: '', preferred_language: language,
         location_text: business.location, remote_ok: false, mode: 'individual', compensation: 'negotiable',
       };
       const project = await businessRequest<BusinessProject>('/api/business/projects', 'POST', brief);
@@ -200,7 +210,7 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
             id="language"
             className={controlClass}
             value={language}
-            onChange={(e) => setLanguage(e.target.value as any)}
+            onChange={(e) => setLanguage(e.target.value as Language)}
             disabled={!!pending}
           >
             {languages.map((l) => (
@@ -214,18 +224,18 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
         <div className="rounded-xl bg-brand-soft p-4 text-sm leading-6 text-muted flex items-start gap-3">
           <span className="text-lg">💡</span>
           <div>
-            <strong>Multilingual Voice & AI:</strong> Select your language (e.g. Hindi), then speak or type. The AI will translate and build a project brief in your language!
+            <strong>Multilingual Voice & AI:</strong> Select your language (e.g. Hindi), then speak or type. The AI understands it and writes your project brief in English so students can read it. Use Listen to hear it back.
           </div>
         </div>
 
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-        <p role="status" className="text-sm text-muted">{pending === 'generate' ? 'Creating your brief. Your problem stays here if this fails…' : pending ? 'Saving your draft…' : ''}</p>
+        {pending && <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-brand-soft"><div className="h-full w-1/3 animate-pulse rounded-full bg-brand" /></div>}
+        <p role="status" className="text-sm text-muted">{pending === 'generate' ? `${GENERATION_STEPS[step]} Your problem stays here if this fails.` : pending ? 'Saving your draft…' : ''}</p>
         <div className="flex flex-wrap gap-3">
-          <Button disabled={!!pending}>Generate Project Brief</Button>
+          <Button disabled={!!pending}>{pending === 'generate' ? 'Generating…' : 'Generate Project Brief'}</Button>
           <Button type="button" variant="secondary" disabled={!!pending} onClick={() => void submit(false)}>Save problem and write a draft</Button>
         </div>
       </form>
     </Card>
   );
 }
-

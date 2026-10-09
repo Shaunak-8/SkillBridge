@@ -1,4 +1,5 @@
 import "server-only";
+import { DEFAULT_GEMINI_MODEL } from "./model";
 
 export interface TranslationResult {
   translatedText: string;
@@ -22,7 +23,7 @@ export async function translateText(
   }
 
   try {
-    const modelName = process.env.LLM_MODEL || "gemini-2.5-flash-lite";
+    const modelName = process.env.LLM_MODEL || DEFAULT_GEMINI_MODEL;
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
     const prompt = `Translate the following text into ${targetLang === 'en' ? 'English' : targetLang}. 
