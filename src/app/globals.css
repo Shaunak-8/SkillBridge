@@ -2,11 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { --ink: #172033; }
+:root { 
+  --ink: #172033;
+  --charcoal: #181a20;
+  --warm-bg: #faf8f5;
+}
 * { box-sizing: border-box; }
-body { margin: 0; background: #f7f9fc; color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+body { 
+  margin: 0; 
+  background: #f7f9fc; 
+  color: var(--ink); 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 button, input, textarea, select { font: inherit; }
-::selection { background: #dcdcff; color: #302c9d; }
+::selection { background: #fde68a; color: #181a20; }
+
 @layer utilities {
   .text-balance { text-wrap: balance; }
+  .btn-press:active {
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 0px 0px 0px #181a20 !important;
+  }
 }
