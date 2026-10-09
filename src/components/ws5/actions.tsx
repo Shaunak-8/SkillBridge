@@ -1,26 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
-
-const LABELS: Record<string, string> = { viewed: "Mark viewed", shortlisted: "Shortlist", accepted: "Accept", declined: "Decline", withdrawn: "Withdraw" };
-
-export function StatusActions({ applicationId, next }: { applicationId: string; next: string[] }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  if (!next.length) return null;
-  async function go(status: string) {
-    setBusy(true); setError("");
-    try {
-      const res = await fetch(`/api/applications/${applicationId}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      if (!res.ok) setError((await res.json().catch(() => null))?.error ?? "Could not update.");
-      else router.refresh();
-    } catch { setError("Network error. Try again."); }
-    setBusy(false);
-  }
-  return <div className="mt-3"><div className="flex flex-wrap gap-2">{next.map((s) => <Button key={s} disabled={busy} onClick={() => go(s)} variant={s === "accepted" ? "primary" : "secondary"} className="px-3 py-1.5">{LABELS[s] ?? s}</Button>)}</div>{error && <p role="alert" className="mt-2 text-xs text-red-600">{error}</p>}</div>;
-}
 
 export function ApplyForm({ projectId }: { projectId: string }) {
   const [note, setNote] = useState("");

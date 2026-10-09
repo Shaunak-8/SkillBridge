@@ -45,10 +45,23 @@ export async function listPortfolio(studentId: string): Promise<StudentPortfolio
 /** The signed-in student's profile, created empty on first access. Ownership comes only from profileId. */
 export async function getMyProfile(profileId: string): Promise<StudentProfileDTO> {
   const sql = database();
-  await sql`INSERT INTO skillbridge.student_profiles (profile_id) VALUES (${profileId}) ON CONFLICT (profile_id) DO NOTHING`;
-  const [row] = await sql`SELECT sp.*, pr.full_name FROM skillbridge.student_profiles sp
-    JOIN skillbridge.profiles pr ON pr.id = sp.profile_id WHERE sp.profile_id = ${profileId}`;
-  return toProfile(row, await listPortfolio(row.id));
+  // Read first, in parallel: the profile row and its portfolio need no ids from each other.
+  const read = async () => {
+    const [rows, items] = await Promise.all([
+      sql`SELECT sp.*, pr.full_name FROM skillbridge.student_profiles sp
+        JOIN skillbridge.profiles pr ON pr.id = sp.profile_id WHERE sp.profile_id = ${profileId}`,
+      sql`SELECT i.* FROM skillbridge.student_portfolio_items i
+        JOIN skillbridge.student_profiles sp ON sp.id = i.student_id WHERE sp.profile_id = ${profileId} ORDER BY i.created_at DESC, i.id`,
+    ]);
+    return { row: rows[0], items };
+  };
+  let { row, items } = await read();
+  if (!row) {
+    // First access only: create the empty profile, then read again.
+    await sql`INSERT INTO skillbridge.student_profiles (profile_id) VALUES (${profileId}) ON CONFLICT (profile_id) DO NOTHING`;
+    ({ row, items } = await read());
+  }
+  return toProfile(row, items.map(toItem));
 }
 
 /** Any edit bumps updated_at so WS5's stored embedding is treated as stale until re-embedded. */

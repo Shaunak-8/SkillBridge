@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { NavAuth } from "./NavAuth";
 
 export function Navbar() {
   return (
@@ -26,19 +27,7 @@ export function Navbar() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2.5">
-          <Link href="/login" className="hidden sm:block">
-            <button className="inline-flex items-center justify-center rounded-xl border-2 border-[#111111] bg-white px-4 py-2 text-xs font-bold text-[#151515] shadow-[2px_2px_0_#111111] hover:bg-[#F7F0D2] active:translate-x-[1px] active:translate-y-[1px] transition">
-              Log in
-            </button>
-          </Link>
-          <Link href="/register">
-            <button className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-[#111111] bg-[#D83D63] px-4 py-2 text-xs font-bold text-white shadow-[3px_3px_0_#111111] hover:bg-[#C02C51] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_#111111] transition">
-              <span>Get started</span>
-              <ArrowRight size={14} />
-            </button>
-          </Link>
-        </div>
+        <NavAuth />
       </div>
     </header>
   );

@@ -3,11 +3,25 @@ import { ArrowUpRight, MapPin, Search } from "lucide-react";
 import { Badge, Button, Card, Input, SectionTitle } from "@/components/ui";
 import { SkillBadge } from "@/components/shared/ProjectCard";
 import { DbError, EmptyState } from "@/components/ws5/parts";
+import { unstable_cache } from "next/cache";
 import { database } from "@/lib/db";
 import { discoverProjects } from "@/lib/ws5/repo";
 import { DEFAULT_PAGE_SIZE } from "@/lib/ws5/guard";
+import { PROJECTS_BOARD_REVALIDATE_SECONDS, PROJECTS_BOARD_TAG } from "@/lib/ws5/cache-tags";
 
 export const dynamic = "force-dynamic";
+
+// The board shows the same published data to everyone, so cache it instead of querying Neon on every visit.
+// Publishing a project invalidates the tag; the time limit is a safety net.
+const loadBoard = unstable_cache(
+  async (q: string | null, category: string | null, skill: string | null, remote: boolean | null, page: number) =>
+    Promise.all([
+      discoverProjects({ q, category, skill, remote }, { page, pageSize: DEFAULT_PAGE_SIZE }),
+      database()`SELECT DISTINCT category FROM skillbridge.projects WHERE status = 'published' ORDER BY category LIMIT 30`.then((r) => r.map((x) => x.category as string)),
+    ]),
+  ["projects-board"],
+  { revalidate: PROJECTS_BOARD_REVALIDATE_SECONDS, tags: [PROJECTS_BOARD_TAG] },
+);
 type SP = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim().slice(0, 100) || null;
 
@@ -25,10 +39,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
   let data, categories: string[] = [];
   try {
-    [data, categories] = await Promise.all([
-      discoverProjects({ q, category, skill, remote }, { page, pageSize: DEFAULT_PAGE_SIZE }),
-      database()`SELECT DISTINCT category FROM skillbridge.projects WHERE status = 'published' ORDER BY category LIMIT 30`.then((r) => r.map((x) => x.category as string)),
-    ]);
+    [data, categories] = await loadBoard(q, category, skill, remote, page);
   } catch { return <main className="mx-auto max-w-7xl px-5 py-12"><DbError /></main>; }
 
   const pages = Math.max(1, Math.ceil(data.total / DEFAULT_PAGE_SIZE));

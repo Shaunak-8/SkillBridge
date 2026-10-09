@@ -39,7 +39,16 @@ export function StudentProfilePage() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/students/me");
+        let res = await fetch("/api/students/me");
+        // A single 401 can be a transient session refresh. Retry once, then send the user to sign in.
+        if (res.status === 401) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          res = await fetch("/api/students/me");
+          if (res.status === 401) {
+            window.location.assign("/login");
+            return;
+          }
+        }
         const json = await res.json();
 
         if (!res.ok) {
