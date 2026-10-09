@@ -34,7 +34,12 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
       <Card className="h-fit p-5 lg:sticky lg:top-6">
         <h3 className="text-lg font-bold">Apply</h3>
         <p className="mb-4 mt-1 text-sm text-muted">The business reviews every application and makes the final decision.</p>
-        {role === "student" ? <ApplyForm projectId={project.id} />
+        {role === "student" ? (
+          <div className="flex flex-col gap-3">
+            <ApplyForm projectId={project.id} />
+            <Link href={`/student/projects/${project.id}/interview`} className="inline-flex w-full items-center justify-center rounded-xl border-2 border-brand px-4 py-2.5 text-sm font-semibold text-brand hover:bg-brand/10">Take Technical Interview</Link>
+          </div>
+        )
           : role ? <p className="text-sm text-muted">Only student accounts can apply to projects.</p>
           : <><Link href="/login" className="inline-flex w-full items-center justify-center rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">Sign in to apply</Link><p className="mt-3 text-center text-xs text-muted">New here? <Link href="/register" className="font-semibold text-brand">Create a student profile</Link></p></>}
       </Card>
