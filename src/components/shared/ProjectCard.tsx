@@ -4,8 +4,8 @@ import type { Project } from "@/types";
 import { Badge, Card } from "@/components/ui";
 
 export function ProjectStatusBadge({ status }: { status: Project["status"] }) {
-  const labels = { open: "Open", in_progress: "In progress", completed: "Completed", draft: "Draft" };
-  return <Badge tone={status === "open" ? "green" : status === "in_progress" ? "purple" : "default"}>{labels[status]}</Badge>;
+  const labels = { published: "Open", in_progress: "In progress", completed: "Completed", draft: "Draft", closed: "Closed", cancelled: "Cancelled" };
+  return <Badge tone={status === "published" ? "green" : status === "in_progress" ? "purple" : "default"}>{labels[status]}</Badge>;
 }
 export function SkillBadge({ name, type = "technical" }: { name: string; type?: string }) { return <Badge tone={type === "technical" ? "blue" : type === "creative" ? "amber" : "purple"}>{name}</Badge>; }
 export function ProjectCard({ project }: { project: Project }) {

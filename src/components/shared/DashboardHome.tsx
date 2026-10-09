@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, ClipboardCheck, FolderKanban, Plus, Sparkles, TrendingUp, Users } from "lucide-react";
-import { applications, projects, assessments } from "@/data/mock-data";
+import { applications, projects } from "@/data/mock-data";
 import type { Role } from "@/types";
 import { Badge, Button, Card, SectionTitle } from "@/components/ui";
 import { ProjectCard } from "./ProjectCard";

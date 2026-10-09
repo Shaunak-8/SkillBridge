@@ -1,10 +1,12 @@
 -- ==============================================================================
 -- Workstream 3: Guided Questions & Owner Verification Schema
+-- Original teammate proposal, retained for reference. Do not execute directly.
+-- Central adaptation: migrations/003_guided_verification.sql (after 001 and 002).
 -- Hand this over to the teammate owning Workstream 6 for inclusion in migrations.
 -- ==============================================================================
 
 -- 1. Modify the existing `projects` table to handle confirmation state
-ALTER TABLE projects 
+ALTER TABLE projects
   ADD COLUMN owner_confirmed BOOLEAN DEFAULT false,
   ADD COLUMN confirmed_at TIMESTAMP WITH TIME ZONE;
 

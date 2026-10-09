@@ -1,18 +1,8 @@
-import { NextResponse } from "next/server";
-
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  
-  // TODO [WS-6]: Verify user is authenticated and owns this project
-  // const user = await getAuthSession();
-  // if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+import { ownedVerification, verificationQuestions, verificationError } from '@/lib/projects/verification';
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // TODO [WS-6]: Fetch questions from Neon `project_questions` table for this project
-    // const questions = await db.query('SELECT * FROM project_questions WHERE project_id = $1 ORDER BY sort_order', [id]);
-    
-    return NextResponse.json({ success: true, data: [] });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch questions" }, { status: 500 });
-  }
+    const { id } = await params;
+    const { project } = await ownedVerification(id);
+    return Response.json({ success: true, data: await verificationQuestions(id), briefVersion: project.brief_version });
+  } catch (error) { return verificationError(error); }
 }
