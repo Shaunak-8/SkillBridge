@@ -1,17 +1,96 @@
 import Link from "next/link";
-import { BarChart3, BriefcaseBusiness, ClipboardCheck, FolderKanban, LayoutDashboard, Settings, Sparkles, UserCheck, Users } from "lucide-react";
+import {
+  BarChart3,
+  BriefcaseBusiness,
+  ClipboardCheck,
+  FolderKanban,
+  LayoutDashboard,
+  Settings,
+  Sparkles,
+  UserCheck,
+  Users,
+} from "lucide-react";
 import type { Role } from "@/types";
-import { BusinessNav } from '@/components/business/BusinessNav';
+import { BusinessNav } from "@/components/business/BusinessNav";
+
 const links: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
   student: [
     { href: "/student/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/student/profile", label: "Profile & Portfolio", icon: UserCheck },
-    { href: "/student/projects", label: "Find projects", icon: FolderKanban },
-    { href: "/student/applications", label: "Applications", icon: ClipboardCheck },
-    { href: "/student/my-projects", label: "My projects", icon: BriefcaseBusiness },
-    { href: "/student/assessments", label: "Assessments", icon: BarChart3 }
+    { href: "/student/projects", label: "Discover Projects", icon: FolderKanban },
+    { href: "/student/applications", label: "My Applications", icon: ClipboardCheck },
+    { href: "/student/my-projects", label: "Active Projects", icon: BriefcaseBusiness },
+    { href: "/student/assessments", label: "Assessments", icon: BarChart3 },
+    { href: "/student/profile", label: "My Profile & Portfolio", icon: UserCheck },
   ],
-  business: [{ href: "/business/dashboard", label: "Overview", icon: LayoutDashboard }, { href: "/business/projects", label: "My projects", icon: FolderKanban }, { href: "/business/post-problem", label: "Post a problem", icon: Sparkles }, { href: "/business/screening", label: "AI screening", icon: ClipboardCheck }, { href: "/business/billing", label: "Billing", icon: BriefcaseBusiness }],
-  admin: [{ href: "/admin/dashboard", label: "Overview", icon: LayoutDashboard }, { href: "/admin/users", label: "Users", icon: Users }, { href: "/admin/projects", label: "Projects", icon: FolderKanban }],
+  business: [
+    { href: "/business/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/business/projects/new", label: "Create a Project", icon: Sparkles },
+    { href: "/business/projects", label: "My Projects", icon: FolderKanban },
+    { href: "/business/screening", label: "Find Students", icon: Users },
+    { href: "/business/profile", label: "Business Profile", icon: Settings },
+  ],
+  admin: [
+    { href: "/admin/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/admin/users", label: "Users", icon: Users },
+    { href: "/admin/projects", label: "Projects", icon: FolderKanban },
+  ],
 };
-export function Sidebar({ role }: { role: Role }) { return <aside className="hidden w-64 shrink-0 border-r border-line bg-white lg:block"><div className="sticky top-0 flex h-screen flex-col p-5"><Link href="/" className="mb-10 flex items-center gap-2 font-bold"><span className="grid size-8 place-items-center rounded-lg bg-brand text-white"><Sparkles size={15} /></span>skillbridge</Link><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{role} workspace</p>{role === "business" ? <BusinessNav /> : <nav className="space-y-1">{links[role].map(({ href, label, icon: Icon }) => <Link key={href} href={href} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-brand-soft hover:text-brand"><Icon size={17} />{label}</Link>)}</nav>}<div className="mt-auto rounded-2xl bg-brand-soft p-4"><p className="text-xs font-bold text-brand-dark">{role === "business" ? "Your business workspace" : "Demo workspace"}</p><p className="mt-1 text-xs leading-5 text-muted">{role === "business" ? "Save your work as a draft. Review and confirm it before publishing." : "Your account is secured with Neon Auth. Project content is demo data."}</p></div><Link href="/" className="mt-4 flex items-center gap-3 px-3 text-sm text-muted"><Settings size={16} />Back to home</Link></div></aside>; }
+
+export function Sidebar({ role }: { role: Role }) {
+  return (
+    <aside className="hidden w-64 shrink-0 border-r-2 border-[#111111] bg-white lg:block">
+      <div className="sticky top-0 flex h-screen flex-col p-5">
+        <Link href="/" className="mb-8 flex items-center gap-2.5 font-black text-lg">
+          <span className="grid size-9 place-items-center rounded-lg border-2 border-[#111111] bg-[#D83D63] text-white shadow-[2px_2px_0_#111111]">
+            <Sparkles size={17} strokeWidth={2.5} />
+          </span>
+          <span className="text-xl">
+            Skill<span className="text-[#D83D63]">Bridge</span>
+          </span>
+        </Link>
+
+        <div className="mb-4 inline-flex items-center gap-1.5 rounded-md border-[1.5px] border-[#111111] bg-[#F7F0D2] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
+          <span className="size-1.5 rounded-full bg-[#D83D63]" />
+          {role} workspace
+        </div>
+
+        {role === "business" ? (
+          <BusinessNav />
+        ) : (
+          <nav className="space-y-1.5">
+            {links[role].map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-3 rounded-lg border-2 border-transparent px-3 py-2 text-xs font-bold text-[#151515] transition-all hover:border-[#111111] hover:bg-[#F7F0D2] hover:shadow-[2px_2px_0_#111111]"
+              >
+                <Icon size={16} strokeWidth={2.2} />
+                <span>{label}</span>
+              </Link>
+            ))}
+          </nav>
+        )}
+
+        <div className="mt-auto rounded-xl border-2 border-[#111111] bg-[#F7F0D2] p-4 shadow-[3px_3px_0_#111111]">
+          <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-[#151515]">
+            <span className="size-2 rounded-full bg-[#D83D63]" />
+            {role === "business" ? "Business Mode" : "Student Mode"}
+          </div>
+          <p className="mt-1.5 text-[11px] font-medium leading-relaxed text-[#655F52]">
+            {role === "business"
+              ? "Turn real business problems into student deliverables."
+              : "Find local projects and build your verified portfolio."}
+          </p>
+        </div>
+
+        <Link
+          href="/"
+          className="mt-3 flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-xs font-bold text-[#655F52] hover:text-[#151515]"
+        >
+          <Settings size={14} />
+          Back to home
+        </Link>
+      </div>
+    </aside>
+  );
+}
