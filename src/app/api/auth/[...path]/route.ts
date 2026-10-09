@@ -44,7 +44,7 @@ export async function POST(request: NextRequest, context: Context) {
     }
     const headers = new Headers(request.headers);
     headers.delete('content-length');
-    const normalizedRequest = new NextRequest(request, { headers, body: JSON.stringify(body) });
+    const normalizedRequest = new NextRequest(request.url, { method: request.method, headers, body: JSON.stringify(body) });
     const response = await getAuth().handler().POST(normalizedRequest, context);
     if (path === 'sign-up/email' && response.ok) {
       const result = await response.clone().json();

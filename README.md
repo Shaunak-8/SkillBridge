@@ -32,7 +32,7 @@ npm run build
 - `src/lib/db.ts`: server-only Neon Postgres access.
 - `migrations`: additive application migrations. Neon Auth-managed tables are never modified.
 
-Server Components are used by default. Authentication and profiles use live Neon services; project matching, AI workflows, and payments still use demo content or placeholders. See [authentication setup and test results](AUTHENTICATION.md) for configuration, Google OAuth, database details, and the complete file inventory. Set the environment values before running the migration. If `.env.local` already exists, keep it instead of copying the example over it.
+Server Components are used by default. Authentication, profiles, the public project board/detail pages, and shared project/application APIs use live Neon services. Other dashboards, AI workflows, and payments still use demo content or placeholders. See [authentication setup](AUTHENTICATION.md) and [shared backend setup](docs/SHARED-BACKEND.md) for configuration and validation commands. Set environment values before running migrations. Preserve an existing `.env.local` instead of copying the example over it.
 
 ## Implemented
 
@@ -48,6 +48,8 @@ Server Components are used by default. Authentication and profiles use live Neon
 - Skills-first matching language, technical and non-technical skill badges, empty/loading-ready visual patterns, form validation attributes, and `.env.example`.
 
 ## Next steps
+
+Shared migrations, API helpers/contracts, Neon-backed public project pages, seed data, and database verification are documented in [Shared backend setup](docs/SHARED-BACKEND.md).
 
 1. Replace `src/data/mock-data.ts` with authorized server-side Neon Postgres queries.
 2. Connect application uploads to a suitable storage service.

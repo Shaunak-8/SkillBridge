@@ -11,6 +11,9 @@
     "test": "vitest run",
     "db:inspect": "node scripts/database.mjs",
     "db:migrate": "node scripts/database.mjs --migrate",
+    "db:seed": "node scripts/seed.mjs",
+    "test:backend": "node scripts/test-backend.mjs",
+    "test:integration": "node scripts/test-integration.mjs",
     "test:db": "node scripts/test-database.mjs",
     "test:smoke": "node scripts/smoke.mjs",
     "test:session": "node scripts/test-session.mjs"

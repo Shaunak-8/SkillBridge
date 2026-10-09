@@ -11,7 +11,7 @@ export function OnboardingForm({ name }: { name: string }) {
     try {
       const response = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(data)) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok) throw new Error(result.error?.message || 'Unable to save profile.');
       window.location.assign(result.redirect);
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to save profile.'); }
     finally { setBusy(false); }

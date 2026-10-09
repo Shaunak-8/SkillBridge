@@ -1,7 +1,6 @@
-"use client";
-import { useMemo, useState } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
-import { Input, SectionTitle, Button } from "@/components/ui";
-import { ProjectCard } from "@/components/shared/ProjectCard";
-import { projects } from "@/data/mock-data";
-export default function ProjectsPage() { const [query, setQuery] = useState(""); const [category, setCategory] = useState("All"); const categories = ["All", ...Array.from(new Set(projects.map((p) => p.category)))]; const filtered = useMemo(() => projects.filter((p) => `${p.title} ${p.summary} ${p.category}`.toLowerCase().includes(query.toLowerCase()) && (category === "All" || p.category === category)), [query, category]); return <main className="mx-auto max-w-7xl px-5 py-12"><SectionTitle eyebrow="Project board" title="Find work that feels meaningful." description="Browse real challenges from local businesses. Every project is clearly scoped, skills-first and ready for curious collaborators." /><div className="mb-8 flex flex-col gap-3 rounded-2xl border border-line bg-white p-4 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3 top-3 text-slate-400" size={17} /><Input value={query} onChange={(e) => setQuery(e.target.value)} className="pl-10" placeholder="Search projects, skills or businesses..." /></div><div className="flex gap-2 overflow-x-auto">{categories.map((item) => <Button key={item} onClick={() => setCategory(item)} variant={category === item ? "primary" : "secondary"} className="whitespace-nowrap px-3 py-2">{item}</Button>)}</div><Button variant="secondary" className="hidden sm:inline-flex"><SlidersHorizontal size={16} /> Filters</Button></div><p className="mb-4 text-sm text-muted">{filtered.length} opportunities found</p><div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">{filtered.map((project) => <ProjectCard key={project.id} project={project} />)}</div>{filtered.length === 0 && <div className="py-20 text-center text-muted">No projects match those filters yet.</div>}</main>; }
+import ProjectBoard from '@/components/shared/ProjectBoard';
+import { publishedProjects } from '@/lib/projects/repository';
+export const dynamic = 'force-dynamic';
+export default async function ProjectsPage() {
+  return <ProjectBoard projects={await publishedProjects(100)} />;
+}

@@ -50,4 +50,6 @@ it.each(['sign-up/email', 'sign-in/email', 'request-password-reset'])('normalize
   const forwarded = mocks.post.mock.calls[0][0] as NextRequest;
   expect((await forwarded.json()).email).toBe('user@example.com');
   expect(forwarded.headers.get('origin')).toBe('http://localhost:3000');
+  expect(forwarded.method).toBe('POST');
+  expect(forwarded.url).toBe(req(path).url);
 });
