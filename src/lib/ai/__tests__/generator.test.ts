@@ -3,6 +3,14 @@ import { generateInputSchema, projectDraftSchema } from "../schemas";
 import { generateProjectDraft } from "../generator";
 import { buildFallbackDraft, buildUserPrompt } from "../prompt";
 
+vi.mock("server-only", () => ({}));
+// No DATABASE_URL in unit tests: retrieval must fall back to the seed knowledge base.
+vi.mock("@/lib/db", () => ({ database: () => { throw new Error("DATABASE_URL is missing."); } }));
+
+vi.mock("server-only", () => ({}));
+// No DATABASE_URL in unit tests: retrieval must fall back to the seed knowledge base.
+vi.mock("@/lib/db", () => ({ database: () => { throw new Error("DATABASE_URL is missing."); } }));
+
 describe("AI Project Draft Generator & Gemini Integration", () => {
   const originalEnv = process.env;
 

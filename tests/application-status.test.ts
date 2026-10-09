@@ -4,10 +4,11 @@ import { APPLICATION_STATUSES, allowedNextStatuses, canTransition, isApplication
 const OWNER_VALID: [ApplicationStatus, ApplicationStatus][] = [
   ['submitted', 'viewed'], ['submitted', 'shortlisted'], ['submitted', 'declined'],
   ['viewed', 'shortlisted'], ['viewed', 'declined'],
+  ['reviewing', 'shortlisted'], ['reviewing', 'declined'],
   ['shortlisted', 'accepted'], ['shortlisted', 'declined'],
 ];
 const APPLICANT_VALID: [ApplicationStatus, ApplicationStatus][] = [
-  ['submitted', 'withdrawn'], ['viewed', 'withdrawn'], ['shortlisted', 'withdrawn'],
+  ['submitted', 'withdrawn'], ['viewed', 'withdrawn'], ['reviewing', 'withdrawn'], ['shortlisted', 'withdrawn'],
 ];
 const pairs = APPLICATION_STATUSES.flatMap((f) => APPLICATION_STATUSES.map((t) => [f, t] as const));
 

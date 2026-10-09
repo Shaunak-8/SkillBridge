@@ -21,6 +21,8 @@ export interface MatchSignals {
   categoryMatch: boolean;
   availabilityHours: number | null;
   similarity: number;
+  /** True when `similarity` is an embedding cosine (not lexical). */
+  semantic?: boolean;
 }
 export interface MatchResult { id: string; rank: number; signals: MatchSignals; reasons: string[] }
 export interface RankOptions { k?: number }

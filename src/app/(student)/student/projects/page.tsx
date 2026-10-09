@@ -6,7 +6,7 @@ import { SkillBadge } from "@/components/shared/ProjectCard";
 import { DbError, EmptyState, WhyMatch } from "@/components/ws5/parts";
 import { currentProfile } from "@/lib/auth/profile";
 import { recommendProjectsForStudent } from "@/lib/matching/rank";
-import { loadPublishedProjects, loadStudentByProfile } from "@/lib/ws5/repo";
+import { loadPublishedProjects, loadStudentByProfile, retrieverForStudent } from "@/lib/ws5/repo";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ async function Recommended() {
     const projects = await loadPublishedProjects();
     const byId = new Map(projects.map((p) => [p.id, p]));
     // Own view: private visibility must not hide results from the student themselves.
-    const results = recommendProjectsForStudent({ ...student, visibility: "matching" }, projects);
+    const results = recommendProjectsForStudent({ ...student, visibility: "matching" }, projects, {}, await retrieverForStudent(student.id, projects.map((p) => p.id)));
     if (!results.length) return <EmptyState>No matching projects yet. Add skills and portfolio items to your profile, or <Link href="/projects" className="font-semibold text-brand">browse all projects</Link>.</EmptyState>;
     return <div className="grid gap-5 md:grid-cols-2">{results.map((r) => {
       const p = byId.get(r.id)!;

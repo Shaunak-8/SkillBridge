@@ -1,3 +1,4 @@
+import "server-only";
 import { projectDraftSchema, ValidatedGenerateInput, ValidatedProjectDraft } from "./schemas";
 import { buildFallbackDraft, buildUserPrompt, SYSTEM_PROMPT } from "./prompt";
 import { retrieveKnowledge } from "./retrieval";
@@ -49,7 +50,7 @@ export async function generateProjectDraft(
 
   if (isGemini) {
     const modelName = process.env.LLM_MODEL || "gemini-2.5-flash-lite";
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
     const controller = new AbortController();
     const timeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || "15000", 10);
@@ -58,7 +59,7 @@ export async function generateProjectDraft(
     try {
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         signal: controller.signal,
         body: JSON.stringify({
           contents: [

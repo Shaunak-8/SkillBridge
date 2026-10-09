@@ -1,4 +1,4 @@
-export const APPLICATION_STATUSES = ['submitted', 'viewed', 'shortlisted', 'accepted', 'declined', 'withdrawn'] as const;
+export const APPLICATION_STATUSES = ['submitted', 'viewed', 'reviewing', 'shortlisted', 'accepted', 'declined', 'withdrawn'] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 export type ApplicationActor = 'business_owner' | 'applicant';
 
@@ -6,11 +6,13 @@ const TRANSITIONS: Record<ApplicationActor, Partial<Record<ApplicationStatus, re
   business_owner: {
     submitted: ['viewed', 'shortlisted', 'declined'],
     viewed: ['shortlisted', 'declined'],
+    reviewing: ['shortlisted', 'declined'],
     shortlisted: ['accepted', 'declined'],
   },
   applicant: {
     submitted: ['withdrawn'],
     viewed: ['withdrawn'],
+    reviewing: ['withdrawn'],
     shortlisted: ['withdrawn'],
   },
 };

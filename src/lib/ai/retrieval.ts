@@ -1,7 +1,24 @@
 import { KnowledgeChunk, RetrievalResult } from "@/types/ai";
 import { generateQueryEmbedding, keywordSimilarity } from "./embeddings";
 import { SEED_KNOWLEDGE_CHUNKS } from "./seed-knowledge";
-import { getDbClient } from "../db";
+import { database } from "@/lib/db";
+
+interface ChunkRow {
+  id: string;
+  source_key: string;
+  language: string;
+  content: string;
+  metadata: Record<string, unknown> | null;
+  similarity: number | string;
+}
+
+function optionalDatabase() {
+  try {
+    return database();
+  } catch {
+    return null; // DATABASE_URL missing: use seed search
+  }
+}
 
 export async function retrieveKnowledge(
   queryText: string,
@@ -25,35 +42,39 @@ export async function retrieveKnowledge(
     let retrievedFrom: "neon_pgvector" | "offline_seed_fallback" = "offline_seed_fallback";
 
     // Attempt Neon PostgreSQL pgvector query if DATABASE_URL is configured
-    const sql = getDbClient();
+    const sql = optionalDatabase();
     if (sql && queryVector && queryVector.length === 768) {
       try {
         const vectorString = `[${queryVector.join(",")}]`;
         const minSimilarity = 0.35;
 
         // Execute parameterized pgvector similarity query against Neon PostgreSQL
-        const rows = await sql`
-          SELECT id, source_id, source_type, language, category, content, metadata,
+        const rows = (await sql`
+          SELECT id, source_key, language, content, metadata,
                  1 - (embedding <=> ${vectorString}::vector) AS similarity
-          FROM knowledge_chunks
-          WHERE source_type IN ('approved_template', 'project_guidance', 'example_brief')
+          FROM skillbridge.knowledge_chunks
+          WHERE approved
+            AND embedding IS NOT NULL
             AND (language = ${language} OR language = 'en')
             AND (1 - (embedding <=> ${vectorString}::vector)) >= ${minSimilarity}
           ORDER BY embedding <=> ${vectorString}::vector
-          LIMIT ${topK};
-        `;
+          LIMIT ${topK}
+        `) as ChunkRow[];
 
         if (Array.isArray(rows) && rows.length > 0) {
-          retrievedChunks = rows.map((r: any) => ({
-            id: r.id,
-            sourceId: r.source_id,
-            sourceType: r.source_type,
-            language: r.language,
-            category: r.category,
-            content: r.content,
-            metadata: r.metadata,
-            similarity: Number(r.similarity),
-          }));
+          retrievedChunks = rows.map((r) => {
+            const meta = r.metadata ?? {};
+            return {
+              id: String(meta.chunkId ?? r.id),
+              sourceId: r.source_key,
+              sourceType: (meta.sourceType as KnowledgeChunk["sourceType"]) ?? "approved_template",
+              language: r.language,
+              category: typeof meta.category === "string" ? meta.category : undefined,
+              content: r.content,
+              metadata: meta,
+              similarity: Number(r.similarity),
+            };
+          });
           retrievedFrom = "neon_pgvector";
         }
       } catch (dbErr) {
@@ -93,14 +114,14 @@ export async function retrieveKnowledge(
       queryEmbeddingGenerated,
       retrievedFrom,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.warn("Retrieval pipeline failure gracefully handled:", error);
     return {
       chunks: [],
       retrievedSourceIds: [],
       queryEmbeddingGenerated: false,
       retrievedFrom: "offline_seed_fallback",
-      error: error.message || "Failed to execute knowledge retrieval.",
+      error: error instanceof Error ? error.message : "Failed to execute knowledge retrieval.",
     };
   }
 }

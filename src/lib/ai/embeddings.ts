@@ -1,3 +1,8 @@
+import "server-only";
+
+export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "gemini-embedding-001";
+export const EMBEDDING_DIMENSIONS = 768;
+
 /**
  * Generate an embedding for a query using the Gemini embedding API.
  * Uses taskType RETRIEVAL_QUERY for query-side embeddings.
@@ -32,58 +37,39 @@ async function _embedText(
   try {
     // gemini-embedding-001 is the current supported model (768 dims).
     // text-embedding-004 was shut down on 2026-01-14.
-    const modelName =
-      process.env.EMBEDDING_MODEL || "gemini-embedding-001";
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:embedContent?key=${apiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: controller.signal,
       body: JSON.stringify({
-        model: `models/${modelName}`,
+        model: `models/${EMBEDDING_MODEL}`,
         content: {
           parts: [{ text: text.trim().substring(0, 2048) }],
         },
         taskType,
-        outputDimensionality: 768,
+        outputDimensionality: EMBEDDING_DIMENSIONS,
       }),
     });
 
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const errBody =
-        typeof res.text === "function"
-          ? await res.text().catch(() => "")
-          : "";
-      console.warn(
-        `Gemini Embedding API returned HTTP ${res.status}: ${errBody}`
-      );
+      // Status only: error bodies may echo request content.
+      console.warn(`Gemini Embedding API returned HTTP ${res.status}`);
       return null;
     }
 
-    const data = await res.json();
-    const values = data?.embedding?.values;
-
-    if (Array.isArray(values) && values.length === 768) {
-      return values as number[];
-    }
-
-    if (Array.isArray(values) && values.length > 0) {
-      // Unexpected dimension — still usable but log a warning
-      console.warn(
-        `Embedding returned ${values.length} dims, expected 768. Model: ${modelName}`
-      );
-      return values as number[];
-    }
-
+    const values = (await res.json())?.embedding?.values;
+    if (Array.isArray(values) && values.length === EMBEDDING_DIMENSIONS) return values as number[];
+    console.warn("Embedding rejected: unexpected dimensions.");
     return null;
   } catch (error) {
-    console.warn("Embedding generation failed:", error);
+    console.warn("Embedding generation failed:", error instanceof Error ? error.name : "unknown");
     return null;
   }
 }

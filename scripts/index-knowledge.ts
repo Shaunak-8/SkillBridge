@@ -1,82 +1,32 @@
-import { neon } from "@neondatabase/serverless";
 import dotenv from "dotenv";
-import { SEED_KNOWLEDGE_CHUNKS } from "../src/lib/ai/seed-knowledge";
-import { generateDocumentEmbedding } from "../src/lib/ai/embeddings";
-
 dotenv.config({ path: ".env.local" });
-dotenv.config();
+import { database } from "../src/lib/db";
+import { SEED_KNOWLEDGE_CHUNKS } from "../src/lib/ai/seed-knowledge";
+import { EMBEDDING_MODEL, generateDocumentEmbedding } from "../src/lib/ai/embeddings";
 
-function generateDeterministicVector(seedText: string, dim: number = 768): number[] {
-  const vec: number[] = new Array(dim);
-  let hash = 0;
-  for (let i = 0; i < seedText.length; i++) {
-    hash = (hash << 5) - hash + seedText.charCodeAt(i);
-    hash |= 0;
-  }
-
-  let norm = 0;
-  for (let i = 0; i < dim; i++) {
-    const val = Math.sin(hash + i * 0.1);
-    vec[i] = val;
-    norm += val * val;
-  }
-  norm = Math.sqrt(norm);
-  return vec.map((v) => v / norm);
-}
-
-async function indexKnowledgeChunks() {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
-    console.error("ERROR: DATABASE_URL environment variable is not defined.");
-    process.exit(1);
-  }
-
-  console.log("Connecting to Neon PostgreSQL...");
-  const sql = neon(dbUrl);
-
-  console.log(`Indexing ${SEED_KNOWLEDGE_CHUNKS.length} approved template chunks...`);
-
+// Run with `npm run db:index` (tsx --conditions react-server, so 'server-only' resolves).
+async function main() {
+  const sql = database();
   let count = 0;
   for (const chunk of SEED_KNOWLEDGE_CHUNKS) {
-    console.log(`Generating embedding for chunk [${chunk.id}] (${chunk.category})...`);
-    let embedding = await generateDocumentEmbedding(chunk.content);
-
-    if (!embedding || embedding.length !== 768) {
-      console.log(`  -> Generating deterministic 768-dim vector fallback for [${chunk.id}]`);
-      embedding = generateDeterministicVector(chunk.content, 768);
-    }
-
-    const vectorString = `[${embedding.join(",")}]`;
-    const metadataJson = JSON.stringify({
+    const embedding = await generateDocumentEmbedding(chunk.content);
+    if (!embedding) throw new Error(`No valid 768-dim embedding for ${chunk.id}; check GEMINI_API_KEY.`);
+    const metadata = JSON.stringify({
+      chunkId: chunk.id,
+      sourceType: chunk.sourceType,
+      category: chunk.category ?? "General",
       keywords: chunk.keywords,
-      sourceId: chunk.sourceId,
     });
-
-    await sql`
-      INSERT INTO knowledge_chunks (id, source_id, source_type, language, category, content, metadata, embedding)
-      VALUES (
-        ${chunk.id},
-        ${chunk.sourceId},
-        ${chunk.sourceType},
-        ${chunk.language},
-        ${chunk.category || "General"},
-        ${chunk.content},
-        ${metadataJson}::jsonb,
-        ${vectorString}::vector
-      )
-      ON CONFLICT (id) DO UPDATE SET
-        content = EXCLUDED.content,
-        category = EXCLUDED.category,
-        metadata = EXCLUDED.metadata,
-        embedding = EXCLUDED.embedding;
-    `;
+    await sql`INSERT INTO skillbridge.knowledge_chunks (source_key, chunk_index, content, language, metadata, approved, embedding, embedding_model)
+      VALUES (${chunk.sourceId}, 0, ${chunk.content}, ${chunk.language}, ${metadata}::jsonb, true, ${`[${embedding.join(",")}]`}::vector, ${EMBEDDING_MODEL})
+      ON CONFLICT (source_key, chunk_index) DO UPDATE SET content = EXCLUDED.content, language = EXCLUDED.language,
+        metadata = EXCLUDED.metadata, approved = true, embedding = EXCLUDED.embedding, embedding_model = EXCLUDED.embedding_model`;
     count++;
   }
-
-  console.log(`✅ Successfully indexed ${count} knowledge chunks into Neon PostgreSQL!`);
+  console.log(`Indexed ${count} knowledge chunks into skillbridge.knowledge_chunks.`);
 }
 
-indexKnowledgeChunks().catch((err) => {
-  console.error("❌ Indexing failed:", err);
+main().catch((err) => {
+  console.error("Indexing failed:", err instanceof Error ? err.message : err);
   process.exit(1);
 });

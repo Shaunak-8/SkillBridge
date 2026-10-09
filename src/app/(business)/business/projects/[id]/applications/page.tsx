@@ -8,14 +8,14 @@ import { allowedNextStatuses, type ApplicationStatus } from "@/lib/applications/
 import { currentProfile } from "@/lib/auth/profile";
 import { isEligible, recommendStudentsForProject } from "@/lib/matching/rank";
 import { isUuid } from "@/lib/ws5/guard";
-import { listProjectApplications, loadProject, loadRecommendableStudents } from "@/lib/ws5/repo";
+import { listProjectApplications, loadProject, loadRecommendableStudents, retrieverForProject } from "@/lib/ws5/repo";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isUuid(id)) notFound();
-  let project, apps, suggestions;
+  let project, apps, suggestions, retriever;
   try {
     const profileId = (await currentProfile())?.profile?.id;
     project = await loadProject(id);
@@ -24,7 +24,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     const students = await loadRecommendableStudents();
     const applied = new Set(apps.items.map((a) => a.student.id));
     const byId = new Map(students.map((s) => [s.id, s]));
-    suggestions = recommendStudentsForProject(project, students).filter((r) => !applied.has(r.id)).map((r) => ({ ...r, student: byId.get(r.id)! }));
+    retriever = await retrieverForProject(project.id, [...new Set([...students.map((s) => s.id), ...apps.items.map((a) => a.student.id)])]);
+    suggestions = recommendStudentsForProject(project, students, {}, retriever).filter((r) => !applied.has(r.id)).map((r) => ({ ...r, student: byId.get(r.id)! }));
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_")) throw e; // let notFound() through
     return <DashboardLayout role="business"><DbError /></DashboardLayout>;
@@ -33,7 +34,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return <DashboardLayout role="business">
     <SectionTitle eyebrow={project.title} title="Applications" description="Review applicants and decide who to move forward. Suggestions are a starting point - you make the final decision." />
     {apps.items.length === 0 ? <EmptyState>No applications yet.</EmptyState> : <div className="space-y-4">{apps.items.map((a) => {
-      const ev = isEligible(project, { ...a.student, visibility: "matching" }) ? recommendStudentsForProject(project, [{ ...a.student, visibility: "matching" }])[0] : undefined;
+      const ev = isEligible(project, { ...a.student, visibility: "matching" }) ? recommendStudentsForProject(project, [{ ...a.student, visibility: "matching" }], {}, retriever)[0] : undefined;
       return <Card key={a.id} className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-bold">{a.student.displayName}</h3><p className="text-xs text-muted">Applied {new Date(a.createdAt).toLocaleDateString("en-GB")}{a.student.availabilityHoursPerWeek != null && ` · ${a.student.availabilityHoursPerWeek} hrs/week`}</p></div><ApplicationStatusBadge status={a.status} /></div>
         <p className="mt-3 whitespace-pre-line text-sm leading-6">{a.coverNote}</p>

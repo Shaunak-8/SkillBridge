@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LexicalRetriever } from '@/lib/matching/retriever';
+import { EmbeddingRetriever, LexicalRetriever, MIN_SEMANTIC_SIMILARITY } from '@/lib/matching/retriever';
 import { recommendProjectsForStudent, recommendStudentsForProject } from '@/lib/matching/rank';
 import type { MatchProject, MatchStudent } from '@/lib/matching/types';
 
@@ -17,7 +17,9 @@ const react = student({
   portfolio: [{ title: 'Cafe ordering app', description: 'Menu and cart', skillsUsed: ['React'] }],
 });
 const baker = student({ id: 'baker', bio: 'I bake sourdough bread', skills: ['Baking'], interests: ['Food'] });
-const partial = student({ id: 'partial', skills: ['CSS'] });
+// One of two required skills plus a category preference: weaker than `react` but not merely incidental.
+const partial = student({ id: 'partial', skills: ['CSS'], preferredCategories: ['web development'] });
+const incidental = student({ id: 'incidental', bio: 'I bake sourdough bread', skills: ['CSS'] });
 
 describe('students for project', () => {
   it('ranks the React student above a partial match and excludes the baker', () => {
@@ -135,5 +137,70 @@ describe('LexicalRetriever', () => {
   it('handles empty candidates and empty query', () => {
     expect(r.retrieve({ id: 'q', text: 'x' }, [], 3)).toEqual([]);
     expect(r.retrieve({ id: 'q', text: '' }, [{ id: 'a', text: 'react' }], 3)[0].similarity).toBe(0);
+  });
+});
+
+describe('incidental single-skill candidates', () => {
+  it('excludes a lone shared skill (1 of 2) with no evidence, category or similarity', () => {
+    expect(recommendStudentsForProject(project(), [incidental])).toEqual([]);
+  });
+  it('keeps a lone shared skill when the project requires only one skill', () => {
+    expect(recommendStudentsForProject(project({ requiredSkills: ['CSS'] }), [incidental]).map((r) => r.id)).toEqual(['incidental']);
+  });
+  it('keeps a lone skill backed by portfolio evidence', () => {
+    const s = student({ id: 'ev', skills: ['CSS'], portfolio: [{ title: 'Styled site', description: '', skillsUsed: ['CSS'] }] });
+    expect(recommendStudentsForProject(project(), [s]).map((r) => r.id)).toEqual(['ev']);
+  });
+});
+
+describe('EmbeddingRetriever', () => {
+  const q = { id: 'p1', text: 'cafe website' };
+  const doc = (id: string) => ({ id, text: `${id} text` });
+  const retriever = (vectors: Record<string, number[]>, query: number[] | null = [1, 0]) =>
+    new EmbeddingRetriever(query, new Map(Object.entries(vectors)));
+
+  it('ranks by cosine of the supplied vectors and flags them semantic', () => {
+    const out = retriever({ near: [1, 0.1], far: [0, 1] }).retrieve(q, [doc('far'), doc('near')], 5);
+    expect(out.map((r) => r.id)).toEqual(['near', 'far']);
+    expect(out[0]).toMatchObject({ semantic: true });
+    expect(out[0].similarity).toBeGreaterThan(0.99);
+    expect(out[1].similarity).toBe(0);
+  });
+
+  it('falls back to lexical per candidate when its vector is missing or mismatched', () => {
+    const out = retriever({ has: [1, 0], bad: [1, 0, 0] }).retrieve({ id: 'p', text: 'react cafe' }, [
+      { id: 'has', text: 'x' }, { id: 'none', text: 'react cafe' }, { id: 'bad', text: 'react cafe' }], 5);
+    const by = new Map(out.map((r) => [r.id, r]));
+    expect(by.get('has')!.semantic).toBe(true);
+    expect(by.get('none')!.semantic).toBe(false);
+    expect(by.get('none')!.similarity).toBeGreaterThan(0);
+    expect(by.get('bad')!.semantic).toBe(false);
+  });
+
+  it('is fully lexical when the query vector is missing', () => {
+    const out = retriever({ a: [1, 0] }, null).retrieve({ id: 'p', text: 'react' }, [{ id: 'a', text: 'react' }], 5);
+    expect(out[0].semantic).toBe(false);
+  });
+
+  describe('in the ranker', () => {
+    const sem = (vec: number[]) => new EmbeddingRetriever([1, 0], new Map([['x', vec]]));
+    const nobody = student({ id: 'x', bio: 'unrelated words', skills: [] });
+
+    it('admits a semantic-only candidate at the threshold with a grounded-or-neutral reason and no percent', () => {
+      const [r] = recommendStudentsForProject(project(), [nobody], {}, sem([MIN_SEMANTIC_SIMILARITY, Math.sqrt(1 - MIN_SEMANTIC_SIMILARITY ** 2)]));
+      expect(r.id).toBe('x');
+      expect(r.reasons).toEqual(['Profile is semantically close to the project description']);
+      expect(r.reasons.join()).not.toMatch(/%/);
+    });
+
+    it('drops a semantic-only candidate below the threshold', () => {
+      expect(recommendStudentsForProject(project(), [nobody], {}, sem([0.3, Math.sqrt(1 - 0.09)]))).toEqual([]);
+    });
+
+    it('never lets perfect similarity outrank a candidate with a required skill', () => {
+      const skilled = student({ id: 'y', skills: ['React'] });
+      const r = new EmbeddingRetriever([1, 0], new Map([['x', [1, 0]], ['y', [0, 1]]]));
+      expect(recommendStudentsForProject(project({ requiredSkills: ['React'] }), [nobody, skilled], {}, r).map((o) => o.id)).toEqual(['y', 'x']);
+    });
   });
 });

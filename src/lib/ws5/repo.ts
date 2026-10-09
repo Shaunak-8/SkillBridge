@@ -1,5 +1,6 @@
 import 'server-only';
 import { database } from '@/lib/db';
+import { EmbeddingRetriever, LexicalRetriever, type Retriever } from '@/lib/matching/retriever';
 import type { MatchPortfolioItem, MatchProject, MatchStudent } from '@/lib/matching/types';
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -87,6 +88,49 @@ export async function loadRecommendableStudents(): Promise<MatchStudent[]> {
     WHERE sp.visibility IN ('public', 'matching') ORDER BY sp.updated_at DESC LIMIT ${MAX_POOL}`;
   return withPortfolios(rows);
 }
+
+/** pgvector text form '[0.1,0.2]' to numbers. Null if malformed. */
+function parseVector(text: unknown): number[] | null {
+  if (typeof text !== 'string') return null;
+  try {
+    const v: unknown = JSON.parse(text);
+    return Array.isArray(v) && v.every((x) => typeof x === 'number') ? v : null;
+  } catch { return null; }
+}
+
+/**
+ * Stored vectors only (never a live embedding call per request). A row is used only while its
+ * embedding is at least as new as the row and its portfolio items (`embedded_at >= updated_at`). Vectors stay inside the
+ * retriever and never reach a response. Any failure (e.g. migration 004 not applied) means lexical.
+ */
+async function loadVectors(kind: 'projects' | 'students', ids: string[]): Promise<Map<string, number[]>> {
+  const map = new Map<string, number[]>();
+  if (!ids.length) return map;
+  try {
+    const rows: Row[] = (kind === 'projects'
+      ? await database()`SELECT id, embedding::text AS v FROM skillbridge.projects
+          WHERE id = ANY(${ids}::uuid[]) AND embedding IS NOT NULL AND embedded_at >= updated_at`
+      : await database()`SELECT id, embedding::text AS v FROM skillbridge.student_profiles
+          WHERE id = ANY(${ids}::uuid[]) AND embedding IS NOT NULL AND embedded_at >= updated_at
+            AND NOT EXISTS (SELECT 1 FROM skillbridge.student_portfolio_items i WHERE i.student_id = student_profiles.id AND i.updated_at > student_profiles.embedded_at)`) ?? [];
+    for (const r of rows) {
+      const v = parseVector(r.v);
+      if (v) map.set(r.id, v);
+    }
+  } catch { /* lexical fallback */ }
+  return map;
+}
+
+async function buildRetriever(queryKind: 'projects' | 'students', queryId: string, candidateKind: 'projects' | 'students', candidateIds: string[]): Promise<Retriever> {
+  const [query, vectors] = await Promise.all([loadVectors(queryKind, [queryId]), loadVectors(candidateKind, candidateIds)]);
+  const q = query.get(queryId) ?? null;
+  return q && vectors.size ? new EmbeddingRetriever(q, vectors) : new LexicalRetriever();
+}
+
+/** Retriever for ranking students against a project: embeddings when stored, lexical otherwise. */
+export const retrieverForProject = (projectId: string, studentIds: string[]) => buildRetriever('projects', projectId, 'students', studentIds);
+/** Retriever for ranking projects against a student. */
+export const retrieverForStudent = (studentId: string, projectIds: string[]) => buildRetriever('students', studentId, 'projects', projectIds);
 
 export async function studentIdForProfile(profileId: string): Promise<string | null> {
   const rows = await database()`SELECT id FROM skillbridge.student_profiles WHERE profile_id = ${profileId}`;

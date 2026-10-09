@@ -68,6 +68,60 @@ const applications = [
   ['p10', 's8', 'submitted', 'I cleaned up my family shop books last year and can set up monthly statements for you.'],
 ];
 
+
+// Deliverables are required by Member 6's projects_publish_ready constraint for published/in_progress/completed projects.
+const deliverables = {
+  p1: ['Mobile-first order screen for the counter team', 'Order status board', 'Short handover guide'],
+  p2: ['Six tested menu items with costings', 'Menu copy for print and web', 'Ingredient sourcing list'],
+  p3: ['30 edited product photographs', 'Five lifestyle hero images', 'Shot list and file naming guide'],
+  p4: ['Inventory dashboard with reorder alerts', 'Cleaned stock spreadsheet', 'One-page user guide'],
+  p5: ['Two-week content calendar', 'Ten ready-to-post stories and reels', 'Simple weekly results summary'],
+  p6: ['Six documented regional bake recipes', 'Photos of each finished bake', 'Allergen and storage notes'],
+  p7: ['Brand story page copy', 'Refreshed homepage and about copy', 'Short tone-of-voice guide'],
+  p8: ['Event plan and run sheet', 'Maker and vendor line-up', 'Post-event summary'],
+  p9: ['Measured floor plan', 'Two seating layout options', 'Capacity comparison'],
+  p10: ['Monthly sales and expense statements', 'Simple annual budget', 'Bookkeeping routine for the team'],
+  p11: ['Ten customer interviews', 'Summary of what customers value', 'Three recommended actions'],
+  p12: ['30-second vertical video', 'Square cut for the feed', 'Raw clips folder'],
+  p13: ['Loyalty card concept sketch', 'Scope outline'],
+};
+const TARGET_STATUS = { p4: 'in_progress', p8: 'completed' };
+const unrepaired = [];
+
+// Follows Member 6's guard_project rules: brief edits on a published project reset it to draft, so the
+// brief is written first, then the project is confirmed (confirmed_version = brief_version) and published,
+// then advanced draft -> published -> in_progress -> completed. Locked rows are reported, never forced.
+async function seedProject(p) {
+  const brief = [p.title, p.summary, p.problem, p.category, p.loc, p.req, p.deliverables, p.timeline];
+  const target = p.status;
+  const [existing] = await sql`SELECT status FROM skillbridge.projects WHERE id = ${p.id}`;
+  if (!existing) {
+    await sql`INSERT INTO skillbridge.projects (id, owner_profile_id, title, summary, problem_statement, category, location_text, required_skills, deliverables, timeline, remote_ok, compensation, status, owner_confirmed)
+      VALUES (${p.id}, ${p.owner}, ${p.title}, ${p.summary}, ${p.problem}, ${p.category}, ${p.loc}, ${p.req}, ${p.deliverables}, ${p.timeline}, ${p.remote}, ${p.comp}, 'draft', false)`;
+  } else if (['draft', 'published'].includes(existing.status)) {
+    await sql`UPDATE skillbridge.projects SET title = ${p.title}, summary = ${p.summary}, problem_statement = ${p.problem}, category = ${p.category}, location_text = ${p.loc},
+        required_skills = ${p.req}, deliverables = ${p.deliverables}, timeline = ${p.timeline}, remote_ok = ${p.remote}, compensation = ${p.comp}
+      WHERE id = ${p.id} AND (ROW(title, summary, problem_statement, category, location_text, required_skills, deliverables, timeline, remote_ok, compensation)
+        IS DISTINCT FROM ROW(${p.title}::text, ${p.summary}::text, ${p.problem}::text, ${p.category}::text, ${p.loc}::text, ${p.req}::text[], ${p.deliverables}::text[], ${p.timeline}::text, ${p.remote}::boolean, ${p.comp}::text))`;
+  }
+  let [row] = await sql`SELECT status, owner_confirmed, confirmed_version, brief_version, deliverables FROM skillbridge.projects WHERE id = ${p.id}`;
+  if (['in_progress', 'completed'].includes(row.status) && row.deliverables.length === 0) {
+    unrepaired.push(`${p.key} (${row.status}, empty deliverables, brief locked by guard_project)`);
+    return;
+  }
+  if (target !== 'draft' && row.status === 'draft') {
+    await sql`UPDATE skillbridge.projects SET owner_confirmed = true, confirmed_version = brief_version, status = 'published', published_at = COALESCE(published_at, now()) WHERE id = ${p.id}`;
+  } else if (row.status === 'published' && (!row.owner_confirmed || row.confirmed_version !== row.brief_version)) {
+    await sql`UPDATE skillbridge.projects SET owner_confirmed = true, confirmed_version = brief_version WHERE id = ${p.id}`;
+  }
+  const want = TARGET_STATUS[p.key];
+  if (want) {
+    [row] = await sql`SELECT status FROM skillbridge.projects WHERE id = ${p.id}`;
+    if (row.status === 'published') await sql`UPDATE skillbridge.projects SET status = 'in_progress' WHERE id = ${p.id}`;
+    if (want === 'completed' && row.status !== 'completed') await sql`UPDATE skillbridge.projects SET status = 'completed' WHERE id = ${p.id}`;
+  }
+}
+
 const profileIds = {};
 async function upsertProfile(key, role, name, username) {
   const [row] = await sql`
@@ -101,14 +155,8 @@ try {
     }
   }
 
-  for (const [key, owner, title, summary, problem, category, req, loc, remote, timeline, comp, status, confirmed] of projects) {
-    await sql`
-      INSERT INTO skillbridge.projects (id, owner_profile_id, title, summary, problem_statement, category, required_skills, location_text, remote_ok, timeline, compensation, status, owner_confirmed, published_at)
-      VALUES (${uid(`pr:${key}`)}, ${profileIds[owner]}, ${title}, ${summary}, ${problem}, ${category}, ${req}, ${loc}, ${remote}, ${timeline}, ${comp}, ${status}, ${confirmed},
-        ${status === 'draft' ? null : new Date().toISOString()})
-      ON CONFLICT (id) DO UPDATE SET owner_profile_id = EXCLUDED.owner_profile_id, title = EXCLUDED.title, summary = EXCLUDED.summary, problem_statement = EXCLUDED.problem_statement,
-        category = EXCLUDED.category, required_skills = EXCLUDED.required_skills, location_text = EXCLUDED.location_text, remote_ok = EXCLUDED.remote_ok, timeline = EXCLUDED.timeline,
-        compensation = EXCLUDED.compensation, status = EXCLUDED.status, owner_confirmed = EXCLUDED.owner_confirmed, updated_at = now()`;
+  for (const [key, owner, title, summary, problem, category, req, loc, remote, timeline, comp, status] of projects) {
+    await seedProject({ id: uid(`pr:${key}`), key, owner: profileIds[owner], title, summary, problem, category, req, loc, remote, timeline, comp, status, deliverables: deliverables[key] });
   }
 
   for (const [project, student, status, note] of applications) {
@@ -117,6 +165,7 @@ try {
       VALUES (${uid(`ap:${project}:${student}`)}, ${uid(`pr:${project}`)}, ${profileIds[`sp:${student}`]}, ${status}, ${note})
       ON CONFLICT (project_id, student_id) DO UPDATE SET status = EXCLUDED.status, cover_note = EXCLUDED.cover_note, updated_at = now()`;
   }
+  if (unrepaired.length) console.warn(`Could not repair: ${unrepaired.join('; ')}`);
   console.log(`Seeded ${businesses.length} businesses, ${students.length} students, ${projects.length} projects, ${applications.length} applications.`);
 } catch (error) {
   console.error('Seed failed:', error.code || error.name, error.message);

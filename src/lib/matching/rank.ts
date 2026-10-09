@@ -1,4 +1,4 @@
-import { LexicalRetriever, tokenize, type Retriever } from './retriever';
+import { LexicalRetriever, MIN_SEMANTIC_SIMILARITY, tokenize, type Retriever } from './retriever';
 import type { MatchDoc, MatchProject, MatchResult, MatchSignals, MatchStudent, RankOptions } from './types';
 
 /** Scoring weights. Skill overlap dominates; similarity is only a weak tie-breaker. */
@@ -7,7 +7,9 @@ export const WEIGHTS = {
   portfolioEvidence: 4, // per required skill demonstrated in a portfolio item
   category: 5, // project category in preferred categories or interests
   availability: 1, // availability stated
-  similarity: 3, // multiplied by 0..1 cosine
+  similarity: 3, // lexical: multiplied by 0..1 cosine
+  semanticSimilarity: 5, // embeddings: multiplied by (cosine - threshold) / (1 - threshold), so 0 at the threshold.
+  // Highest possible similarity contribution (5) stays below one required skill (10): skill overlap dominates.
 } as const;
 /** Similarity alone qualifies a candidate only at or above this. */
 export const MIN_SIMILARITY = 0.2;
@@ -16,10 +18,10 @@ const SHARED_TERMS_SHOWN = 3;
 
 const norm = (s: string) => s.trim().toLowerCase();
 
-const projectDoc = (p: MatchProject): MatchDoc => ({
+export const projectDoc = (p: MatchProject): MatchDoc => ({
   id: p.id, text: [p.title, p.summary, p.problemStatement, p.category, ...p.requiredSkills].join(' '),
 });
-const studentDoc = (s: MatchStudent): MatchDoc => ({
+export const studentDoc = (s: MatchStudent): MatchDoc => ({
   id: s.id,
   text: [s.bio, ...s.skills, ...s.interests, ...s.preferredCategories,
     ...s.portfolio.flatMap((i) => [i.title, i.description, ...i.skillsUsed])].join(' '),
@@ -55,8 +57,26 @@ function computeSignals(project: MatchProject, student: MatchStudent, similarity
   };
 }
 
-function hasMeaningfulSignal(s: MatchSignals): boolean {
-  return s.matchedSkills.length > 0 || s.categoryMatch || s.similarity >= MIN_SIMILARITY;
+const meetsSimilarity = (s: MatchSignals) => s.similarity >= (s.semantic ? MIN_SEMANTIC_SIMILARITY : MIN_SIMILARITY);
+
+/**
+ * A single incidental skill (1 of N >= 2 required) with no portfolio evidence, no category match
+ * and weak similarity is not enough to recommend someone.
+ */
+function isIncidentalSkillOnly(project: MatchProject, s: MatchSignals): boolean {
+  return s.matchedSkills.length === 1 && dedupe(project.requiredSkills).length >= 2
+    && s.portfolioEvidence.length === 0 && !s.categoryMatch && s.similarity < MIN_SEMANTIC_SIMILARITY;
+}
+
+function hasMeaningfulSignal(project: MatchProject, s: MatchSignals): boolean {
+  if (isIncidentalSkillOnly(project, s)) return false;
+  return s.matchedSkills.length > 0 || s.categoryMatch || meetsSimilarity(s);
+}
+
+function similarityScore(s: MatchSignals): number {
+  if (!s.semantic) return s.similarity * WEIGHTS.similarity;
+  const span = 1 - MIN_SEMANTIC_SIMILARITY;
+  return Math.max(0, s.similarity - MIN_SEMANTIC_SIMILARITY) / span * WEIGHTS.semanticSimilarity;
 }
 
 function score(s: MatchSignals): number {
@@ -64,7 +84,7 @@ function score(s: MatchSignals): number {
     + s.portfolioEvidence.length * WEIGHTS.portfolioEvidence
     + (s.categoryMatch ? WEIGHTS.category : 0)
     + (s.availabilityHours !== null ? WEIGHTS.availability : 0)
-    + s.similarity * WEIGHTS.similarity;
+    + similarityScore(s);
 }
 
 function sharedTerms(a: string, b: string): string[] {
@@ -80,6 +100,7 @@ function buildReasons(project: MatchProject, student: MatchStudent, s: MatchSign
   if (s.matchedSkills.length === 0 && !s.categoryMatch) {
     const terms = sharedTerms(projectDoc(project).text, studentDoc(student).text);
     if (terms.length) reasons.push(`Profile and project text both mention ${terms.map((t) => `"${t}"`).join(', ')}`);
+    else if (s.semantic && s.similarity >= MIN_SEMANTIC_SIMILARITY) reasons.push('Profile is semantically close to the project description');
   }
   return reasons;
 }
@@ -88,13 +109,14 @@ interface Pair { project: MatchProject; student: MatchStudent; candidateId: stri
 
 function rankPairs(query: MatchDoc, pairs: Pair[], docOf: (p: Pair) => MatchDoc, opts: RankOptions, retriever: Retriever): MatchResult[] {
   if (pairs.length === 0) return [];
-  const sims = new Map(retriever.retrieve(query, pairs.map(docOf), pairs.length).map((r) => [r.id, r.similarity]));
+  const sims = new Map(retriever.retrieve(query, pairs.map(docOf), pairs.length).map((r) => [r.id, r]));
   return pairs
     .map((p) => {
-      const signals = computeSignals(p.project, p.student, sims.get(p.candidateId) ?? 0);
+      const hit = sims.get(p.candidateId);
+      const signals = { ...computeSignals(p.project, p.student, hit?.similarity ?? 0), semantic: hit?.semantic ?? false };
       return { p, signals, score: score(signals) };
     })
-    .filter((x) => hasMeaningfulSignal(x.signals))
+    .filter((x) => hasMeaningfulSignal(x.p.project, x.signals))
     .sort((a, b) => b.score - a.score || a.p.candidateId.localeCompare(b.p.candidateId))
     .slice(0, opts.k ?? DEFAULT_K)
     .map((x, i) => ({ id: x.p.candidateId, rank: i + 1, signals: x.signals, reasons: buildReasons(x.p.project, x.p.student, x.signals) }));

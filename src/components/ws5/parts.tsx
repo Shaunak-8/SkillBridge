@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui";
 import type { ApplicationStatus } from "@/lib/applications/status";
 
-const TONES: Record<ApplicationStatus, "default" | "green" | "amber" | "purple" | "blue"> = { submitted: "blue", viewed: "purple", shortlisted: "amber", accepted: "green", declined: "default", withdrawn: "default" };
+const TONES: Record<ApplicationStatus, "default" | "green" | "amber" | "purple" | "blue"> = { submitted: "blue", viewed: "purple", reviewing: "purple", shortlisted: "amber", accepted: "green", declined: "default", withdrawn: "default" };
 export const ApplicationStatusBadge = ({ status }: { status: ApplicationStatus }) => <Badge tone={TONES[status]} className="capitalize">{status}</Badge>;
 
 /** "Why this match?" - bullet reasons built from real profile/project fields. */

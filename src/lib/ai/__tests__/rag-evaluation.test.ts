@@ -5,6 +5,10 @@ import { cosineSimilarity, keywordSimilarity } from "../embeddings";
 import { buildUserPrompt } from "../prompt";
 import { KnowledgeChunk } from "@/types/ai";
 
+vi.mock("server-only", () => ({}));
+// No DATABASE_URL in unit tests: retrieval must fall back to the seed knowledge base.
+vi.mock("@/lib/db", () => ({ database: () => { throw new Error("DATABASE_URL is missing."); } }));
+
 describe("Semantic Retrieval & RAG Pipeline Evaluation", () => {
   describe("Similarity & Distance Math", () => {
     it("calculates exact cosine similarity between identical vectors", () => {

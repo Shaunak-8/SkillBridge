@@ -1,5 +1,5 @@
 import { recommendStudentsForProject } from '@/lib/matching/rank';
-import { candidateDto, loadProject, loadRecommendableStudents } from '@/lib/ws5/repo';
+import { candidateDto, loadProject, loadRecommendableStudents, retrieverForProject } from '@/lib/ws5/repo';
 import { fail, guard, isUuid, unavailable } from '@/lib/ws5/guard';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +13,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (project.ownerProfileId !== auth.profile.id) return fail('You do not own this project.', 403);
     const students = await loadRecommendableStudents();
     const byId = new Map(students.map((s) => [s.id, s]));
-    const items = recommendStudentsForProject(project, students).map((r) => ({
+    const items = recommendStudentsForProject(project, students, {}, await retrieverForProject(project.id, students.map((s) => s.id))).map((r) => ({
       rank: r.rank, reasons: r.reasons, candidate: candidateDto(byId.get(r.id)!),
     }));
     return Response.json({ items });
