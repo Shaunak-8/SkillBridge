@@ -18,6 +18,15 @@ body {
 button, input, textarea, select { font: inherit; }
 ::selection { background: #fde68a; color: #181a20; }
 
+.business-workspace { overflow-wrap: anywhere; }
+.business-workspace :is(button, a, input, textarea, select):focus-visible,
+nav[aria-label*="business"] a:focus-visible { outline: 2px solid #4842d0; outline-offset: 3px; }
+nav[aria-label="Business navigation"] a:focus-visible { outline: 2px solid #4842d0; outline-offset: 3px; }
+.business-workspace button { min-height: 44px; }
+@media (prefers-reduced-motion: reduce) {
+  .business-workspace * { transition: none !important; animation: none !important; }
+  .business-workspace button:hover { transform: none; }
+}
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .btn-press:active {

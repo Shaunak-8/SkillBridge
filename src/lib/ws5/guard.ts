@@ -16,6 +16,7 @@ export interface Profile { id: string; role: 'student' | 'business' | 'admin'; o
 export async function guard(role?: 'student' | 'business'): Promise<{ profile: Profile } | Response> {
   const current = await currentProfile();
   if (!current) return fail('Sign in required.', 401);
+  if (!current.user.emailVerified) return fail('Verify your email first.', 403);
   const profile = current.profile as Profile | null;
   if (!profile?.onboarding_completed) return fail('Complete onboarding first.', 403);
   if (role && profile.role !== role) return fail('Not allowed for your account type.', 403);

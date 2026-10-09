@@ -1,10 +1,2 @@
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { PostProblemForm } from "./PostProblemForm";
-
-export default function Page() {
-  return (
-    <DashboardLayout role="business">
-      <PostProblemForm />
-    </DashboardLayout>
-  );
-}
+import { redirect } from 'next/navigation';
+export default function Page() { redirect('/business/projects/new'); }

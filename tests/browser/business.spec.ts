@@ -1,0 +1,21 @@
+import {test,expect} from '@playwright/test';
+for(const width of [375,768,1440])test(`business draft lifecycle at ${width}px`,async({page,request})=>{
+ await request.post('/__test/reset');await page.setViewportSize({width,height:900});
+ await page.goto('/business/onboarding');await page.getByLabel('Business name',{exact:true}).fill('Browser fixture shop');await page.keyboard.press('Tab');await expect(page.getByLabel('Business category',{exact:true})).toBeFocused();expect(await page.getByLabel('Business category',{exact:true}).evaluate(element=>parseFloat(getComputedStyle(element).outlineWidth)>0)).toBe(true);await page.getByLabel('Business category',{exact:true}).fill('Retail');await page.getByRole('button',{name:'Save and continue'}).click();
+ await expect(page.getByText('No projects yet',{exact:true})).toBeVisible();await page.getByRole('link',{name:'Post Your First Problem'}).click();
+ const problem='Our shop gets customer orders on WhatsApp and we need to track which are completed.';
+ await page.getByLabel('Describe your business problem').fill(problem);
+ await page.route('**/api/business/generate',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{message:'Please try again.'}})}),{times:1});
+ await page.getByRole('button',{name:'Generate Project Brief'}).click();await expect(page.getByRole('alert')).toHaveText('Please try again.');await expect(page.getByLabel('Describe your business problem')).toHaveValue(problem);
+ await page.getByRole('button',{name:'Generate Project Brief'}).click();await expect(page.getByLabel('Project title',{exact:true})).toHaveValue('Shop order tracker');
+ const draftUrl=page.url();await page.getByLabel('Project title',{exact:true}).fill('Unsaved edit');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Regenerate',exact:true}).click();await expect(page.getByRole('status')).toContainText('A new draft is saved');await expect(page.getByLabel('Project title',{exact:true})).toHaveValue('Shop order tracker');expect(page.url()).toBe(draftUrl);
+ await page.getByLabel('Project title',{exact:true}).fill('Shop orders reviewed by owner');await page.getByRole('button',{name:'Save Draft'}).click();await expect(page.getByRole('status')).toContainText('Your draft is saved');
+ await page.reload();await expect(page.getByLabel('Project title',{exact:true})).toHaveValue('Shop orders reviewed by owner');
+ const id=page.url().split('/projects/')[1].split('/')[0];const current=(await(await request.get(`/api/business/projects/${id}`)).json()).data;
+ const bypass=await request.patch(`/api/projects/${id}`,{headers:{origin:'http://localhost:4179'},data:{status:'published',briefVersion:current.brief_version}});expect(bypass.status()).toBe(409);
+ await page.getByLabel('Which order statuses do you need? (required)').fill('Received, packing, completed');await page.getByRole('checkbox',{name:'I have reviewed these details'}).check();await page.getByRole('button',{name:'Confirm Details',exact:true}).click();await expect(page.getByRole('status')).toContainText('These details are confirmed');
+ await page.getByRole('button',{name:'Publish Project',exact:true}).click();await expect(page.getByRole('status')).toHaveText('Your project is published!');
+ await expect(page.getByRole('link',{name:'Review applications (0)'})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:`test-results/business-${width}.png`,fullPage:true});
+});

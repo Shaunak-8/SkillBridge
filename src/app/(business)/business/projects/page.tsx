@@ -1,14 +1,17 @@
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { ProjectCard } from '@/components/shared/ProjectCard';
-import { SectionTitle } from '@/components/ui';
-import { requireRole } from '@/lib/auth/profile';
-import { ownedProjects } from '@/lib/projects/repository';
-export default async function Page() {
-  const current = await requireRole('business');
-  const projects = await ownedProjects(current.profile.id);
-  return <DashboardLayout role="business">
-    <SectionTitle eyebrow="business" title="Your projects" description="Review your drafts and track your projects." />
-    <div className="grid gap-5 md:grid-cols-2">{projects.map(project => <ProjectCard key={project.id} project={project} />)}</div>
-    {!projects.length && <p className="text-muted">No projects yet. Create a draft to get started.</p>}
-  </DashboardLayout>;
+import Link from 'next/link';
+import { SectionTitle, Card } from '@/components/ui';
+import { ProjectList, actionClass } from '@/components/business/ProjectList';
+import { businessPage } from '@/lib/business/pages';
+import { listProjects } from '@/lib/business/service';
+import { statuses } from '@/lib/business/contracts';
+export default async function Page({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  const { owner } = await businessPage();
+  const { status } = await searchParams;
+  const projects = await listProjects(owner);
+  const filter = statuses.find(s => s === status);
+  const filtered = filter ? projects.filter(p => p.status === filter) : projects;
+  return <><div className="flex flex-wrap items-start justify-between gap-4"><SectionTitle title="My projects" description="Review drafts and keep track of your published projects." /><Link href="/business/projects/new" className={actionClass}>Post a Problem</Link></div>
+    <nav aria-label="Filter projects" className="mb-6 flex flex-wrap gap-2">{['all', ...statuses].map(s => <Link key={s} aria-current={(filter ?? 'all') === s ? 'page' : undefined} href={s === 'all' ? '/business/projects' : `?status=${s}`} className={`inline-flex min-h-11 items-center rounded-xl border px-4 text-sm capitalize ${(filter ?? 'all') === s ? 'border-brand bg-brand-soft font-semibold text-brand-dark' : 'border-line bg-white text-muted'}`}>{s.replaceAll('_', ' ')}</Link>)}</nav>
+    {filter && !filtered.length ? <Card className="p-8 text-center"><h2 className="text-lg font-bold">No {filter.replaceAll('_', ' ')} projects{filter === 'published' ? ' yet' : ''}.</h2><Link className="mt-4 inline-flex min-h-11 items-center text-brand" href="/business/projects">View all projects</Link></Card> : <ProjectList projects={filtered} />}
+    {projects.length === 200 && <p className="mt-4 text-sm text-muted">Showing your 200 most recently updated projects.</p>}</>;
 }

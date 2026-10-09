@@ -70,3 +70,22 @@ Use shared TypeScript request/response types. Never trust a `user_id` supplied b
 
 ## End goal
 A non-technical shopkeeper can move from “I have a problem” to a verified, published project without needing to understand AI or project-management jargon.
+
+## Implementation status — 9 October 2026
+The text-first launch flow is implemented. English is the supported launch language; voice recording/transcription remains unavailable until an approved transcription service is integrated.
+
+| Requirement | Implementation and validation |
+| --- | --- |
+| Business onboarding/profile | `/business/onboarding` and `/business/profile`; verified Business session, validated server-side persistence |
+| Text problem input | `/business/projects/new`; Member 2's 10–4,000-character input contract, retry/error recovery |
+| Generated brief | Reuses Member 2's Gemini service; maps goals, deliverables, skills, optional budget/timeline; saves the draft and questions server-side |
+| Review/edit/regenerate/save | `/business/projects/:id` and `/edit`; stable IDs, refresh persistence, unsaved-edit warning, regeneration preserves the project ID |
+| Owner verification | Reuses Member 6's integrated Member 3 questions/answers/confirmation contract; answers advance the revision before confirmation |
+| Publish safeguards | Server checks business role, ownership, current confirmation, required fields and answers; stale/unconfirmed publication is rejected |
+| Dashboard/status | Real owner-scoped project/application counts, status filters and empty states |
+| Mobile/accessibility | Browser lifecycle tests pass at 375px, 768px and 1440px, including keyboard focus and no horizontal overflow |
+| Sensitive data | Server-only credentials; built client JavaScript checked for database, auth and AI secrets |
+
+Validation includes isolated PostgreSQL and browser fixtures, plus a separate successful real Gemini structured-output check. Browser fixtures use synthetic authentication/provider responses and never connect to Neon; they do not claim a live Neon-authenticated browser test. Existing authentication uses the project's previously verified Neon setup.
+
+See [the implementation report](workstream-1-implementation.md) for files, API contracts, database sources, exact check results and local setup. No migration or business test records were written to the live database during this work.

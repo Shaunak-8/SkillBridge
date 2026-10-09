@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { Badge, Card, SectionTitle } from "@/components/ui";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import Link from "next/link";
+import { businessPage } from "@/lib/business/pages";
 import { SkillBadge } from "@/components/shared/ProjectCard";
 import { StatusActions } from "@/components/ws5/actions";
 import { ApplicationStatusBadge, DbError, EmptyState, WhyMatch } from "@/components/ws5/parts";
 import { allowedNextStatuses, type ApplicationStatus } from "@/lib/applications/status";
-import { currentProfile } from "@/lib/auth/profile";
 import { isEligible, recommendStudentsForProject } from "@/lib/matching/rank";
 import { isUuid } from "@/lib/ws5/guard";
 import { listProjectApplications, loadProject, loadRecommendableStudents, retrieverForProject } from "@/lib/ws5/repo";
@@ -17,7 +17,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (!isUuid(id)) notFound();
   let project, apps, suggestions, retriever;
   try {
-    const profileId = (await currentProfile())?.profile?.id;
+    const { owner: profileId } = await businessPage();
     project = await loadProject(id);
     if (!project || project.ownerProfileId !== profileId) notFound();
     apps = await listProjectApplications(id, { page: 1, pageSize: 50 });
@@ -28,11 +28,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     suggestions = recommendStudentsForProject(project, students, {}, retriever).filter((r) => !applied.has(r.id)).map((r) => ({ ...r, student: byId.get(r.id)! }));
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_")) throw e; // let notFound() through
-    return <DashboardLayout role="business"><DbError /></DashboardLayout>;
+    return <DbError />;
   }
 
-  return <DashboardLayout role="business">
+  return <>
     <SectionTitle eyebrow={project.title} title="Applications" description="Review applicants and decide who to move forward. Suggestions are a starting point - you make the final decision." />
+    <Link href={`/business/projects/${id}`} className="mb-4 inline-flex min-h-11 items-center text-sm font-semibold text-brand">Back to project</Link>
+    {apps.total > 50 && <p className="mb-4 text-sm text-muted">Showing the 50 most recent applications.</p>}
     {apps.items.length === 0 ? <EmptyState>No applications yet.</EmptyState> : <div className="space-y-4">{apps.items.map((a) => {
       const ev = isEligible(project, { ...a.student, visibility: "matching" }) ? recommendStudentsForProject(project, [{ ...a.student, visibility: "matching" }], {}, retriever)[0] : undefined;
       return <Card key={a.id} className="p-5">
@@ -50,5 +52,5 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="mt-3 flex flex-wrap gap-2">{s.student.skills.slice(0, 6).map((k) => <SkillBadge key={k} name={k} />)}</div>
       <WhyMatch reasons={s.reasons} />
     </Card>)}</div>}
-  </DashboardLayout>;
+  </>;
 }

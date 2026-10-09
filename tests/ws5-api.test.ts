@@ -16,7 +16,7 @@ const AID = '22222222-2222-4222-8222-222222222222';
 const BIZ = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const STU = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
-const as = (role: string, id: string) => current.mockResolvedValue({ user: { id: 'u' }, profile: { id, role, onboarding_completed: true } });
+const as = (role: string, id: string) => current.mockResolvedValue({ user: { id: 'u', emailVerified: true }, profile: { id, role, onboarding_completed: true } });
 const req = (body?: unknown, url = 'http://x/api') => new Request(url, { method: 'POST', body: JSON.stringify(body) });
 const projectRow = (o = {}) => ({ id: PID, title: 'Cafe site', summary: '', problem_statement: '', category: 'Web', required_skills: ['React'], remote_ok: true, location_text: null, status: 'published', owner_profile_id: BIZ, ...o });
 const studentRow = { id: 's1', full_name: 'Asha', email: 'asha@example.com', bio: 'hi', skills: ['React'], interests: [], preferred_categories: [], availability_hours_per_week: 5, remote_preference: 'either', visibility: 'public' };

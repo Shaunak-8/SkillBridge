@@ -46,12 +46,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return Response.json({ project: projectBrief(rows[0]) });
     }
     const status = body.status as ProjectStatus;
+    if (body.briefVersion !== undefined && body.briefVersion !== project.brief_version) throw new ApiFailure(409, 'STALE_BRIEF', 'Project changed. Reload before changing its status.');
     if (!canTransition(project.status, status)) throw new ApiFailure(409, 'INVALID_TRANSITION', 'Invalid project transition.');
-    const rows = await database()`UPDATE skillbridge.projects SET status = ${status}
+    const rows = await database()`UPDATE skillbridge.projects SET status = ${status}, published_at = CASE WHEN ${status} = 'published' THEN COALESCE(published_at, now()) ELSE published_at END
       WHERE id = ${id} AND owner_profile_id = ${current.profile.id} AND status = ${project.status} AND brief_version = ${project.brief_version} RETURNING *`;
     if (!rows[0]) throw new ApiFailure(409, 'CONFLICT', 'Project changed. Reload and retry.');
     return Response.json({ project: projectBrief(rows[0]) });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Required questions are unanswered')) return apiError(new ApiFailure(409, 'PROJECT_NOT_READY', 'Answer all required questions before publishing.'));
     if ((error as { code?: string })?.code === '23514') return apiError(new ApiFailure(409, 'PROJECT_NOT_READY', 'Confirm a complete brief and answer required questions before publishing.'));
     return apiError(error);
   }
