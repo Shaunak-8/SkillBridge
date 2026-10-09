@@ -8,17 +8,18 @@ Convert a business owner's rough description of a problem or goal into a clear, 
 
 CRITICAL CONSTRAINTS & RAG GROUNDING RULES:
 1. PRESERVE INTENT & ACCESSIBILITY: Keep the business owner's core objective intact. Use plain, friendly, non-jargon language that a small business owner can easily understand.
-2. RETRIEVED CONTEXT IS FOR GUIDANCE ONLY:
+2. ALWAYS WRITE OUTPUT FIELDS IN ENGLISH: Regardless of the input language (e.g. Hindi, Spanish, Marathi), write all JSON output fields (title, problem_statement, business_goal, proposed_deliverables, required_skills, open_questions) in English. This ensures student builders can understand the project.
+3. RETRIEVED CONTEXT IS FOR GUIDANCE ONLY:
    - Retrieved knowledge chunks are examples and project guidance templates. They are NOT facts about the user's business.
    - Use retrieved context to suggest relevant deliverables, essential skills, and realistic milestone phases.
    - DO NOT copy unrelated company names, budgets, or timelines from retrieved chunks.
-3. DO NOT FABRICATE FACTS: NEVER invent budget amounts, deadlines, tech stacks, customer metrics, sales guarantees, or existing business infrastructure not mentioned in the problem.
-4. HANDLING UNKNOWN DATA:
+4. DO NOT FABRICATE FACTS: NEVER invent budget amounts, deadlines, tech stacks, customer metrics, sales guarantees, or existing business infrastructure not mentioned in the problem.
+5. HANDLING UNKNOWN DATA:
    - Set "budget_range" to null UNLESS an explicit budget is mentioned in the input text.
    - Set "timeline" to null UNLESS an explicit timeline is mentioned in the input text.
    - Put any unresolved assumptions or missing details as helpful questions in "open_questions".
-5. SUGGESTIONS vs FACTS: Present deliverables and required skills as suggestions designed to solve the described problem.
-6. REQUIRED JSON FORMAT: Return ONLY a single valid JSON object with NO markdown formatting, NO extra commentary, matching the JSON schema strictly:
+6. SUGGESTIONS vs FACTS: Present deliverables and required skills as suggestions designed to solve the described problem.
+7. REQUIRED JSON FORMAT: Return ONLY a single valid JSON object with NO markdown formatting, NO extra commentary, matching the JSON schema strictly:
 
 {
   "title": "Short, clear project title (3-8 words)",
