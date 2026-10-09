@@ -16,11 +16,18 @@ export function toProject(r: Row): MatchProject {
   };
 }
 
-function toStudent(r: Row, portfolio: MatchPortfolioItem[]): MatchStudent {
+/** `portfolio` arrives as a json column (already parsed by the neon driver) built in the same query as the student. */
+function toPortfolio(raw: unknown): MatchPortfolioItem[] {
+  return Array.isArray(raw)
+    ? raw.map((i: Row) => ({ title: i.title, description: i.description, skillsUsed: i.skillsUsed ?? [] }))
+    : [];
+}
+
+function toStudent(r: Row): MatchStudent {
   return {
     id: r.id, displayName: r.full_name ?? 'Student', bio: r.bio, skills: r.skills ?? [], interests: r.interests ?? [],
     preferredCategories: r.preferred_categories ?? [], availabilityHoursPerWeek: r.availability_hours_per_week,
-    remotePreference: r.remote_preference, visibility: r.visibility, portfolio,
+    remotePreference: r.remote_preference, visibility: r.visibility, portfolio: toPortfolio(r.portfolio),
   };
 }
 
@@ -58,35 +65,20 @@ export async function loadProject(id: string): Promise<(MatchProject & { ownerPr
 
 export async function loadPublishedProjects(): Promise<MatchProject[]> {
   const rows = await database()`SELECT id, title, summary, problem_statement, category, required_skills, remote_ok, location_text, status FROM skillbridge.projects WHERE status = 'published'
-    ORDER BY published_at DESC NULLS LAST LIMIT ${MAX_POOL}`;
+    ORDER BY published_at DESC NULLS LAST, id LIMIT ${MAX_POOL}`;
   return rows.map(toProject);
-}
-
-async function loadPortfolios(studentIds: string[]): Promise<Map<string, MatchPortfolioItem[]>> {
-  const map = new Map<string, MatchPortfolioItem[]>();
-  if (!studentIds.length) return map;
-  const rows = await database()`SELECT student_id, title, description, skills_used FROM skillbridge.student_portfolio_items
-    WHERE student_id = ANY(${studentIds}::uuid[]) ORDER BY created_at`;
-  for (const r of rows) {
-    const list = map.get(r.student_id) ?? [];
-    list.push({ title: r.title, description: r.description, skillsUsed: r.skills_used ?? [] });
-    map.set(r.student_id, list);
-  }
-  return map;
-}
-
-async function withPortfolios(rows: Row[]): Promise<MatchStudent[]> {
-  const portfolios = await loadPortfolios(rows.map((r) => r.id));
-  return rows.map((r) => toStudent(r, portfolios.get(r.id) ?? []));
 }
 
 /** Only students who opted in to matching (public or matching visibility). */
 export async function loadRecommendableStudents(): Promise<MatchStudent[]> {
   const rows = await database()`SELECT sp.id, pr.full_name, sp.bio, sp.skills, sp.interests, sp.preferred_categories,
-      sp.availability_hours_per_week, sp.remote_preference, sp.visibility FROM skillbridge.student_profiles sp
+      sp.availability_hours_per_week, sp.remote_preference, sp.visibility,
+      COALESCE((SELECT json_agg(json_build_object('title', i.title, 'description', i.description, 'skillsUsed', i.skills_used) ORDER BY i.created_at)
+        FROM skillbridge.student_portfolio_items i WHERE i.student_id = sp.id), '[]'::json) AS portfolio
+    FROM skillbridge.student_profiles sp
     JOIN skillbridge.profiles pr ON pr.id = sp.profile_id
-    WHERE sp.visibility IN ('public', 'matching') ORDER BY sp.updated_at DESC LIMIT ${MAX_POOL}`;
-  return withPortfolios(rows);
+    WHERE sp.visibility IN ('public', 'matching') ORDER BY sp.updated_at DESC, sp.id LIMIT ${MAX_POOL}`;
+  return rows.map(toStudent);
 }
 
 /** pgvector text form '[0.1,0.2]' to numbers. Null if malformed. */
@@ -102,18 +94,12 @@ function parseVector(text: unknown): number[] | null {
  * Stored vectors only (never a live embedding call per request). A row is used only while its
  * embedding is at least as new as the row and its portfolio items (`embedded_at >= updated_at`). Vectors stay inside the
  * retriever and never reach a response. Any failure (e.g. migration 004 not applied) means lexical.
+ * These loaders need no candidate ids, so they run in the same round trip as the entity queries.
  */
-async function loadVectors(kind: 'projects' | 'students', ids: string[]): Promise<Map<string, number[]>> {
+async function vectorsOf(run: () => Promise<Row[]>): Promise<Map<string, number[]>> {
   const map = new Map<string, number[]>();
-  if (!ids.length) return map;
   try {
-    const rows: Row[] = (kind === 'projects'
-      ? await database()`SELECT id, embedding::text AS v FROM skillbridge.projects
-          WHERE id = ANY(${ids}::uuid[]) AND embedding IS NOT NULL AND embedded_at >= updated_at`
-      : await database()`SELECT id, embedding::text AS v FROM skillbridge.student_profiles
-          WHERE id = ANY(${ids}::uuid[]) AND embedding IS NOT NULL AND embedded_at >= updated_at
-            AND NOT EXISTS (SELECT 1 FROM skillbridge.student_portfolio_items i WHERE i.student_id = student_profiles.id AND i.updated_at > student_profiles.embedded_at)`) ?? [];
-    for (const r of rows) {
+    for (const r of (await run()) ?? []) {
       const v = parseVector(r.v);
       if (v) map.set(r.id, v);
     }
@@ -121,16 +107,58 @@ async function loadVectors(kind: 'projects' | 'students', ids: string[]): Promis
   return map;
 }
 
-async function buildRetriever(queryKind: 'projects' | 'students', queryId: string, candidateKind: 'projects' | 'students', candidateIds: string[]): Promise<Retriever> {
-  const [query, vectors] = await Promise.all([loadVectors(queryKind, [queryId]), loadVectors(candidateKind, candidateIds)]);
-  const q = query.get(queryId) ?? null;
-  return q && vectors.size ? new EmbeddingRetriever(q, vectors) : new LexicalRetriever();
+/** Fresh vectors of the same pool `loadPublishedProjects` returns. */
+export const loadFreshProjectVectors = () => vectorsOf(() => database()`SELECT id, embedding::text AS v FROM
+    (SELECT id, embedding, embedded_at, updated_at FROM skillbridge.projects WHERE status = 'published'
+      ORDER BY published_at DESC NULLS LAST, id LIMIT ${MAX_POOL}) p
+  WHERE embedding IS NOT NULL AND embedded_at >= updated_at`);
+
+/** Fresh vectors of the `loadRecommendableStudents` pool plus the project's 50 most recent applicants. */
+export const loadFreshStudentVectors = (projectId: string) => vectorsOf(() => database()`SELECT id, embedding::text AS v FROM skillbridge.student_profiles
+  WHERE embedding IS NOT NULL AND embedded_at >= updated_at
+    AND NOT EXISTS (SELECT 1 FROM skillbridge.student_portfolio_items i WHERE i.student_id = student_profiles.id AND i.updated_at > student_profiles.embedded_at)
+    AND (id IN (SELECT id FROM skillbridge.student_profiles WHERE visibility IN ('public', 'matching') ORDER BY updated_at DESC, id LIMIT ${MAX_POOL})
+      OR id IN (SELECT student_id FROM skillbridge.applications WHERE project_id = ${projectId} ORDER BY created_at DESC, id LIMIT 50))`);
+
+const firstVector = (m: Map<string, number[]>) => m.values().next().value ?? null;
+
+export const loadProjectVector = (projectId: string) => vectorsOf(() => database()`SELECT id, embedding::text AS v FROM skillbridge.projects
+  WHERE id = ${projectId} AND embedding IS NOT NULL AND embedded_at >= updated_at`).then(firstVector);
+
+export const loadStudentVectorByProfile = (profileId: string) => vectorsOf(() => database()`SELECT id, embedding::text AS v FROM skillbridge.student_profiles
+  WHERE profile_id = ${profileId} AND embedding IS NOT NULL AND embedded_at >= updated_at
+    AND NOT EXISTS (SELECT 1 FROM skillbridge.student_portfolio_items i WHERE i.student_id = student_profiles.id AND i.updated_at > student_profiles.embedded_at)`).then(firstVector);
+
+/** Embeddings when the query and at least one candidate have fresh vectors, lexical otherwise. */
+export function pickRetriever(query: number[] | null, vectors: Map<string, number[]>): Retriever {
+  return query && vectors.size ? new EmbeddingRetriever(query, vectors) : new LexicalRetriever();
 }
 
-/** Retriever for ranking students against a project: embeddings when stored, lexical otherwise. */
-export const retrieverForProject = (projectId: string, studentIds: string[]) => buildRetriever('projects', projectId, 'students', studentIds);
-/** Retriever for ranking projects against a student. */
-export const retrieverForStudent = (studentId: string, projectIds: string[]) => buildRetriever('students', studentId, 'projects', projectIds);
+/** One parallel round trip for the student's recommendations page/route. Null when the student has no profile row. */
+export async function loadStudentRecommendationInput(profileId: string) {
+  const [student, projects, queryVector, vectors] = await Promise.all([
+    loadStudentByProfile(profileId), loadPublishedProjects(), loadStudentVectorByProfile(profileId), loadFreshProjectVectors(),
+  ]);
+  return student ? { student, projects, retriever: pickRetriever(queryVector, vectors) } : null;
+}
+
+export type ProjectRecommendationInput =
+  | { kind: 'notFound' }
+  | { kind: 'forbidden' }
+  | { kind: 'ok'; project: MatchProject & { ownerProfileId: string }; students: MatchStudent[]; retriever: Retriever };
+
+/**
+ * One parallel round trip for a project owner's candidate list. The owner check runs on the project row
+ * before anything is returned; candidate data fetched for a non-owner is discarded.
+ */
+export async function loadProjectRecommendationInput(projectId: string, ownerProfileId: string): Promise<ProjectRecommendationInput> {
+  const [project, students, queryVector, vectors] = await Promise.all([
+    loadProject(projectId), loadRecommendableStudents(), loadProjectVector(projectId), loadFreshStudentVectors(projectId),
+  ]);
+  if (!project) return { kind: 'notFound' };
+  if (project.ownerProfileId !== ownerProfileId) return { kind: 'forbidden' };
+  return { kind: 'ok', project, students, retriever: pickRetriever(queryVector, vectors) };
+}
 
 export async function studentIdForProfile(profileId: string): Promise<string | null> {
   const rows = await database()`SELECT id FROM skillbridge.student_profiles WHERE profile_id = ${profileId}`;
@@ -139,9 +167,12 @@ export async function studentIdForProfile(profileId: string): Promise<string | n
 
 export async function loadStudentByProfile(profileId: string): Promise<MatchStudent | null> {
   const rows = await database()`SELECT sp.id, pr.full_name, sp.bio, sp.skills, sp.interests, sp.preferred_categories,
-      sp.availability_hours_per_week, sp.remote_preference, sp.visibility FROM skillbridge.student_profiles sp
+      sp.availability_hours_per_week, sp.remote_preference, sp.visibility,
+      COALESCE((SELECT json_agg(json_build_object('title', i.title, 'description', i.description, 'skillsUsed', i.skills_used) ORDER BY i.created_at)
+        FROM skillbridge.student_portfolio_items i WHERE i.student_id = sp.id), '[]'::json) AS portfolio
+    FROM skillbridge.student_profiles sp
     JOIN skillbridge.profiles pr ON pr.id = sp.profile_id WHERE sp.profile_id = ${profileId}`;
-  return (await withPortfolios(rows))[0] ?? null;
+  return rows[0] ? toStudent(rows[0]) : null;
 }
 
 /** Inserts only if the project is still published. Returns null when it is not. */
@@ -156,15 +187,16 @@ export async function insertApplication(projectId: string, studentId: string, co
 export async function listProjectApplications(projectId: string, { page, pageSize }: Page) {
   const rows = await database()`SELECT a.id AS application_id, a.status AS application_status, a.cover_note, a.created_at,
       sp.id, pr.full_name, sp.bio, sp.skills, sp.interests, sp.preferred_categories,
-      sp.availability_hours_per_week, sp.remote_preference, sp.visibility, count(*) OVER() AS total
+      sp.availability_hours_per_week, sp.remote_preference, sp.visibility, count(*) OVER() AS total,
+      COALESCE((SELECT json_agg(json_build_object('title', i.title, 'description', i.description, 'skillsUsed', i.skills_used) ORDER BY i.created_at)
+        FROM skillbridge.student_portfolio_items i WHERE i.student_id = sp.id), '[]'::json) AS portfolio
     FROM skillbridge.applications a
     JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
     JOIN skillbridge.profiles pr ON pr.id = sp.profile_id
     WHERE a.project_id = ${projectId}
     ORDER BY a.created_at DESC, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
-  const students = await withPortfolios(rows);
-  const items = rows.map((r: Row, i: number) => ({
-    id: r.application_id, status: r.application_status, coverNote: r.cover_note, createdAt: r.created_at, student: students[i],
+  const items = rows.map((r: Row) => ({
+    id: r.application_id, status: r.application_status, coverNote: r.cover_note, createdAt: r.created_at, student: toStudent(r),
   }));
   return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };
 }
@@ -174,6 +206,18 @@ export async function listStudentApplications(studentId: string, { page, pageSiz
       p.title AS project_title, p.category AS project_category, p.status AS project_status, count(*) OVER() AS total
     FROM skillbridge.applications a JOIN skillbridge.projects p ON p.id = a.project_id
     WHERE a.student_id = ${studentId}
+    ORDER BY a.created_at DESC, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
+  const items = rows.map(({ total: _t, ...r }: Row) => r);
+  return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };
+}
+
+/** Same as `listStudentApplications` but resolves the student row inside the query (saves a round trip). */
+export async function listApplicationsForProfile(profileId: string, { page, pageSize }: Page) {
+  const rows = await database()`SELECT a.id, a.status, a.cover_note, a.created_at, a.updated_at, p.id AS project_id,
+      p.title AS project_title, p.category AS project_category, p.status AS project_status, count(*) OVER() AS total
+    FROM skillbridge.applications a JOIN skillbridge.projects p ON p.id = a.project_id
+    JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
+    WHERE sp.profile_id = ${profileId}
     ORDER BY a.created_at DESC, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
   const items = rows.map(({ total: _t, ...r }: Row) => r);
   return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };

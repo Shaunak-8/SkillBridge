@@ -49,7 +49,8 @@ export async function generateProjectDraft(
   const isGemini = Boolean(process.env.GEMINI_API_KEY || process.env.LLM_PROVIDER !== "openai");
 
   if (isGemini) {
-    const modelName = process.env.LLM_MODEL || "gemini-2.5-flash-lite";
+    // gemini-2.5-flash-lite returns 404 for new keys. 3.1-flash-lite often takes ~14s (over the 15s timeout).
+    const modelName = process.env.LLM_MODEL || "gemini-3.5-flash-lite";
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
     const controller = new AbortController();

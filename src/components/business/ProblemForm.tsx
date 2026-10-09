@@ -5,12 +5,21 @@ import { Button, Card } from '@/components/ui';
 import { problemSchema, type BriefInput, type BusinessProject, type BusinessProfile } from '@/lib/business/contracts';
 import { businessRequest, FormError } from '@/lib/business/client';
 import { FormField, controlClass } from './FormField';
+const GENERATION_STEPS = ['Reading your problem…', 'Finding similar project templates…', 'Writing your brief…', 'Checking the details…'];
+const STEP_MS = 2500;
 export function ProblemForm({ business }: { business: BusinessProfile }) {
   const router = useRouter();
   const [problem, setProblem] = useState('');
   const [pending, setPending] = useState('');
   const [error, setError] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [step, setStep] = useState(0);
+  // Drafting takes several seconds: walk through what is actually happening so the wait is visible.
+  useEffect(() => {
+    if (pending !== 'generate') { setStep(0); return; }
+    const timer = setInterval(() => setStep(s => Math.min(s + 1, GENERATION_STEPS.length - 1)), STEP_MS);
+    return () => clearInterval(timer);
+  }, [pending]);
   useEffect(() => { if (!problem) return; const warn = (e: BeforeUnloadEvent) => e.preventDefault(); window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn); }, [problem]);
   async function submit(generate: boolean) {
     const parsed = problemSchema.safeParse({ problem, preferred_language: 'en' });
@@ -39,7 +48,8 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
     <FormField name="language" label="Language" hint="English is currently available."><select id="language" className={controlClass} value="en" disabled><option value="en">English</option></select></FormField>
     <p className="rounded-xl bg-brand-soft p-4 text-sm leading-6 text-muted">We’ll suggest a brief for you to review. Nothing is published until you confirm it. Voice input is not available yet; you can type your problem.</p>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    <p role="status" className="text-sm text-muted">{pending === 'generate' ? 'Creating your brief. Your problem stays here if this fails…' : pending ? 'Saving your draft…' : ''}</p>
-    <div className="flex flex-wrap gap-3"><Button disabled={!!pending}>Generate Project Brief</Button><Button type="button" variant="secondary" disabled={!!pending} onClick={() => void submit(false)}>Save problem and write a draft</Button></div>
+    {pending && <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-brand-soft"><div className="h-full w-1/3 animate-pulse rounded-full bg-brand" /></div>}
+    <p role="status" className="text-sm text-muted">{pending === 'generate' ? `${GENERATION_STEPS[step]} Your problem stays here if this fails.` : pending ? 'Saving your draft…' : ''}</p>
+    <div className="flex flex-wrap gap-3"><Button disabled={!!pending}>{pending === 'generate' ? 'Generating…' : 'Generate Project Brief'}</Button><Button type="button" variant="secondary" disabled={!!pending} onClick={() => void submit(false)}>Save problem and write a draft</Button></div>
   </form></Card>;
 }
