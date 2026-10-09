@@ -25,7 +25,7 @@ try {
     await sql`CREATE TABLE IF NOT EXISTS skillbridge.schema_migrations (name text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`;
     const folder = new URL('../migrations/', import.meta.url);
     for (const name of readdirSync(folder).filter(name => /^\d+.*\.sql$/.test(name)).sort()) {
-      const text = readFileSync(new URL(name, folder), 'utf8');
+      const text = readFileSync(new URL(name, folder), 'utf8').replaceAll('\r\n', '\n'); // checksum must not depend on git autocrlf
       const checksum = createHash('sha256').update(text).digest('hex');
       const [applied] = await sql`SELECT checksum FROM skillbridge.schema_migrations WHERE name = ${name}`;
       if (applied) {

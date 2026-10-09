@@ -22,6 +22,7 @@ export async function verificationQuestions(id: string): Promise<ProjectQuestion
     options: row.options ?? undefined, sortOrder: row.position, required: row.required, answerText: row.saved_answer ?? undefined }));
 }
 export function verificationError(error: unknown) {
+  if (error instanceof Error && error.message.includes('Required questions are unanswered')) return apiError(new ApiFailure(409, 'VERIFICATION_NOT_READY', 'Answer all required questions before confirming or publishing.'));
   if ((error as { code?: string })?.code === '23514') return apiError(new ApiFailure(409, 'VERIFICATION_NOT_READY', 'Complete required answers and a valid brief before confirming. Started projects cannot be edited.'));
   if ((error as { code?: string })?.code === '23503') return apiError(new ApiFailure(400, 'INVALID_QUESTION', 'Question does not belong to this project.'));
   return apiError(error);

@@ -1,3 +1,3 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { ProfileCard } from '@/components/auth/ProfileCard';
-export default function Page() { return <DashboardLayout role="student"><ProfileCard role="student" /></DashboardLayout>; }
+import { StudentProfilePage } from '@/components/student/StudentProfilePage';
+export default function Page() { return <DashboardLayout role="student"><StudentProfilePage /></DashboardLayout>; }
