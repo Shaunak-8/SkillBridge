@@ -2,6 +2,7 @@ import "server-only";
 import { projectDraftSchema, ValidatedGenerateInput, ValidatedProjectDraft } from "./schemas";
 import { buildFallbackDraft, buildUserPrompt, SYSTEM_PROMPT } from "./prompt";
 import { retrieveKnowledge } from "./retrieval";
+import { DEFAULT_GEMINI_MODEL } from "./model";
 
 export interface GenerationResult {
   draft: ValidatedProjectDraft;
@@ -49,8 +50,7 @@ export async function generateProjectDraft(
   const isGemini = Boolean(process.env.GEMINI_API_KEY || process.env.LLM_PROVIDER !== "openai");
 
   if (isGemini) {
-    // gemini-2.5-flash-lite returns 404 for new keys. 3.1-flash-lite often takes ~14s (over the 15s timeout).
-    const modelName = process.env.LLM_MODEL || "gemini-3.5-flash-lite";
+    const modelName = process.env.LLM_MODEL || DEFAULT_GEMINI_MODEL;
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
     const controller = new AbortController();

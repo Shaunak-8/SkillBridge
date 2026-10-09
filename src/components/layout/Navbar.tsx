@@ -1,8 +1,12 @@
+'use client';
+
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { authClient } from "@/lib/auth/client";
 import { NavAuth } from "./NavAuth";
 
 export function Navbar() {
+  const { data } = authClient.useSession();
   return (
     <header className="border-b-2 border-[#111111] bg-white sticky top-0 z-40">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 sm:px-8">
@@ -22,9 +26,11 @@ export function Navbar() {
           <Link href="/about" className="transition hover:text-[#D83D63]">
             How it works
           </Link>
-          <Link href="/register" className="transition hover:text-[#D83D63]">
-            For businesses
-          </Link>
+          {!data?.user && (
+            <Link href="/register" className="transition hover:text-[#D83D63]">
+              For businesses
+            </Link>
+          )}
         </nav>
 
         <NavAuth />
