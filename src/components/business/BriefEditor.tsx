@@ -1,11 +1,15 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Button, Card, Badge } from '@/components/ui';
 import { briefSchema, publicationIssues, type BriefInput, type BusinessProject } from '@/lib/business/contracts';
 import { businessRequest, FormError } from '@/lib/business/client';
 import { FormField, controlClass } from './FormField';
 import { useSpeechToText, useTextToSpeech } from '@/lib/utils/speech';
+import { DeleteProjectModal } from './DeleteProjectModal';
+
 
 function briefOf(project: BusinessProject): BriefInput {
   return { title: project.title, summary: project.summary, problem_statement: project.problem_statement, category: project.category,
@@ -57,6 +61,8 @@ const UI_LABELS: Record<string, {
 };
 
 export function BriefEditor({ initial, editing = false }: { initial: BusinessProject; editing?: boolean }) {
+  const router = useRouter();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [project, setProject] = useState(initial);
   const [form, setForm] = useState(briefOf(initial));
   const [deliverables, setDeliverables] = useState(initial.deliverables.join('\n'));
@@ -306,8 +312,19 @@ export function BriefEditor({ initial, editing = false }: { initial: BusinessPro
           {isSpeaking ? 'Stop Audio' : 'Listen to Brief'}
         </button>
 
+        <button
+          type="button"
+          onClick={() => setShowDeleteModal(true)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors"
+          title="Delete project"
+        >
+          <Trash2 size={14} />
+          Delete Project
+        </button>
+
         <Link href="/business/projects" className="ml-auto inline-flex min-h-11 items-center text-sm font-semibold text-brand" onClick={e => { if (dirty && !window.confirm('Your edits are not saved. Leave this page?')) e.preventDefault(); }}>Back to my projects</Link>
       </div>
+
 
       {!editable && <Link href={`/business/projects/${project.id}/applications`} className="inline-flex min-h-11 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">Review applications ({project.application_count})</Link>}
       
@@ -476,6 +493,15 @@ export function BriefEditor({ initial, editing = false }: { initial: BusinessPro
         <div className="flex flex-wrap gap-3">{!editing && <Link className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 text-sm font-semibold text-brand" href={`/business/projects/${project.id}/edit`}>Edit details</Link>}<Button type="button" variant="secondary" disabled={!!pending || dirty || !confirmed || confirmationValid || !!issues.length || project.questions.some(q => q.required && !answers[q.id]?.trim())} onClick={() => void act('confirm')}>{pending === 'confirm' ? 'Confirming…' : confirmationValid ? 'Details confirmed' : 'Confirm Details'}</Button><Button type="button" disabled={!!pending || dirty || !confirmationValid || !!issues.length} onClick={() => void act('publish')}>{pending === 'publish' ? 'Publishing…' : 'Publish Project'}</Button></div>
       </Card>}
       <p role={failed ? 'alert' : 'status'} className={`whitespace-pre-wrap text-sm ${failed ? 'text-red-700' : 'text-emerald-700'}`}>{message}</p>
+      
+      <DeleteProjectModal
+        project={showDeleteModal ? project : null}
+        onClose={() => setShowDeleteModal(false)}
+        onDeleted={() => {
+          router.replace('/business/projects');
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

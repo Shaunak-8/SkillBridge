@@ -7,6 +7,7 @@ import { NavAuth } from "./NavAuth";
 
 export function Navbar() {
   const { data } = authClient.useSession();
+
   return (
     <header className="border-b-2 border-[#111111] bg-white sticky top-0 z-40">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 sm:px-8">

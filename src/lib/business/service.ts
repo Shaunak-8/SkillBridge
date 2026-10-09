@@ -86,3 +86,15 @@ export async function editDraft(owner: string, id: string, input: EditInput): Pr
   if (!rows[0]) throw new BusinessError(409, 'STALE_DRAFT', 'This draft changed or is already published. Reload it before editing.');
   return getProject(owner, id);
 }
+export async function deleteProject(owner: string, id: string): Promise<{ success: boolean }> {
+  await getProject(owner, id);
+  const sql = database();
+  await sql.transaction([
+    sql`DELETE FROM skillbridge.applications WHERE project_id=${id}`,
+    sql`DELETE FROM skillbridge.project_answers WHERE project_id=${id}`,
+    sql`DELETE FROM skillbridge.project_questions WHERE project_id=${id}`,
+    sql`DELETE FROM skillbridge.projects WHERE id=${id} AND owner_profile_id=${owner}`,
+  ]);
+  return { success: true };
+}
+
