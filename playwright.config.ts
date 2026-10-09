@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'./tests/browser',testMatch:'*.spec.ts',workers:1,timeout:60000,use:{baseURL:'http://localhost:4179',headless:true,launchOptions:{executablePath:process.env.BROWSER_EXECUTABLE||'C:/Program Files/Google/Chrome/Application/chrome.exe'},trace:'retain-on-failure'},webServer:{command:'node scripts/business-browser-server.mjs',url:'http://localhost:4179',reuseExistingServer:false,timeout:60000}});

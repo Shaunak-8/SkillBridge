@@ -1,2 +1,3 @@
-import { DashboardLayout } from "@/components/layout/DashboardLayout"; import { RolePage } from "@/components/shared/RolePage";
-export default function Page() { return <DashboardLayout role="business"><RolePage role="business" page="my-projects" /></DashboardLayout>; }
+import { redirect } from 'next/navigation';
+import { ownedProject } from '@/lib/business/pages';
+export default async function Page({ params }: { params: Promise<{ id: string }> }) { const project = await ownedProject((await params).id); redirect(`/business/projects/${project.id}`); }

@@ -8,8 +8,12 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "check:client-secrets": "node scripts/check-client-secrets.mjs",
     "test": "vitest run",
+    "test:browser": "playwright test",
+    "check:ai": "node scripts/verify-ai.mjs",
     "db:inspect": "node scripts/database.mjs",
+    "db:inspect:business": "node scripts/inspect-business.mjs",
     "db:migrate": "node scripts/database.mjs --migrate",
     "test:db": "node scripts/test-database.mjs",
     "test:smoke": "node scripts/smoke.mjs",
@@ -28,9 +32,12 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "server-only": "^0.0.1",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.64.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",

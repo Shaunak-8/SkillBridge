@@ -1,4 +1,5 @@
 export type Role = "student" | "business" | "admin";
+export interface ProjectQuestion { id: string; projectId: string; text: string; type: 'yes_no' | 'short_text' | 'multiple_choice'; options?: string[]; sortOrder: number; required?: boolean; answerText?: string; }
 export type SkillType = "technical" | "creative" | "business";
 export type ProjectStatus = "open" | "in_progress" | "completed" | "draft";
 export type ApplicationStatus = "submitted" | "reviewing" | "shortlisted" | "accepted" | "declined";
