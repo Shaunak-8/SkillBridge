@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
-const mocks = vi.hoisted(() => ({ profile: vi.fn(), sql: vi.fn() }));
+const mocks = vi.hoisted(() => ({ profile: vi.fn(), sql: vi.fn(), embedProject: vi.fn() }));
 vi.mock('@/lib/auth/profile', () => ({ currentProfile: mocks.profile }));
 vi.mock('@/lib/db', () => ({ database: () => mocks.sql }));
 vi.mock('@/lib/auth/security', () => ({ sameOrigin: () => true }));
+vi.mock('@/lib/ai/embed-records', () => ({ embedProject: mocks.embedProject, scheduleEmbedding: (task: () => Promise<unknown>) => { void task(); } }));
 import { requireApiIdentity, requireOwnership, apiError } from '@/lib/api';
 import { PATCH } from '@/app/api/projects/[id]/route';
 import { POST as apply, GET as applications } from '@/app/api/applications/route';
@@ -20,13 +21,28 @@ describe('Shared backend authorization', () => {
     mocks.profile.mockResolvedValue({ user: { emailVerified: true }, profile: { id: 'attacker', role: 'business', onboarding_completed: true } });
     mocks.sql.mockResolvedValue([{ owner_profile_id: 'owner', status: 'draft' }]);
     const response = await PATCH(new Request('http://localhost/api/projects/x', { method: 'PATCH', body: JSON.stringify({ action: 'confirm' }) }), { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) });
-    expect(response.status).toBe(403); expect(mocks.sql).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(403); expect(mocks.sql).toHaveBeenCalledTimes(1); expect(mocks.embedProject).not.toHaveBeenCalled();
   });
   it('translates database rejection of unconfirmed publishing into a stable error', async () => {
     mocks.profile.mockResolvedValue({ user: { emailVerified: true }, profile: { id: 'owner', role: 'business', onboarding_completed: true } });
     mocks.sql.mockResolvedValueOnce([{ owner_profile_id: 'owner', status: 'draft', brief_version: 1 }]).mockRejectedValueOnce({ code: '23514' });
     const response = await PATCH(new Request('http://localhost/api/projects/x', { method: 'PATCH', body: JSON.stringify({ status: 'published' }) }), { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) });
-    expect(response.status).toBe(409); expect((await response.json()).error.code).toBe('PROJECT_NOT_READY');
+    expect(response.status).toBe(409); expect((await response.json()).error.code).toBe('PROJECT_NOT_READY'); expect(mocks.embedProject).not.toHaveBeenCalled();
+  });
+  it('schedules one embedding after a successful publish, and none for other transitions', async () => {
+    const id = '11111111-1111-4111-8111-111111111111';
+    const patch = (status: string) => PATCH(new Request('http://localhost/api/projects/x', { method: 'PATCH', body: JSON.stringify({ status }) }), { params: Promise.resolve({ id }) });
+    mocks.profile.mockResolvedValue({ user: { emailVerified: true }, profile: { id: 'owner', role: 'business', onboarding_completed: true } });
+    mocks.sql.mockResolvedValueOnce([{ owner_profile_id: 'owner', status: 'draft', brief_version: 1 }]).mockResolvedValueOnce([{ id, owner_profile_id: 'owner', status: 'published', brief_version: 1 }]);
+    expect((await patch('published')).status).toBe(200);
+    expect(mocks.embedProject).toHaveBeenCalledTimes(1); expect(mocks.embedProject).toHaveBeenCalledWith(id);
+    mocks.embedProject.mockClear();
+    mocks.sql.mockResolvedValueOnce([{ owner_profile_id: 'owner', status: 'published', brief_version: 1 }]).mockResolvedValueOnce([{ id, owner_profile_id: 'owner', status: 'closed', brief_version: 1 }]);
+    expect((await patch('closed')).status).toBe(200);
+    expect(mocks.embedProject).not.toHaveBeenCalled();
+    mocks.sql.mockResolvedValueOnce([{ owner_profile_id: 'owner', status: 'completed', brief_version: 1 }]);
+    expect((await patch('published')).status).toBe(409);
+    expect(mocks.embedProject).not.toHaveBeenCalled();
   });
   it('derives student identity from the session when applying', async () => {
     mocks.profile.mockResolvedValue({ user: { emailVerified: true }, profile: { id: 'real-profile', role: 'student', onboarding_completed: true } });

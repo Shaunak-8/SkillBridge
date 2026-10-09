@@ -224,7 +224,7 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
         <div className="rounded-xl bg-brand-soft p-4 text-sm leading-6 text-muted flex items-start gap-3">
           <span className="text-lg">💡</span>
           <div>
-            <strong>Multilingual Voice & AI:</strong> Select your language (e.g. Hindi), then speak or type. The AI will translate and build a project brief in your language!
+            <strong>Multilingual Voice & AI:</strong> Select your language (e.g. Hindi), then speak or type. The AI understands it and writes your project brief in English so students can read it. Use Listen to hear it back.
           </div>
         </div>
 

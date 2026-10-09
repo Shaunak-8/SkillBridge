@@ -3,7 +3,9 @@ vi.mock('server-only', () => ({}));
 const sql = vi.hoisted(() => vi.fn());
 const current = vi.hoisted(() => vi.fn());
 const origin = vi.hoisted(() => ({ ok: true }));
+const embedStudent = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/db', () => ({ database: () => sql }));
+vi.mock('@/lib/ai/embed-records', () => ({ embedStudentByProfile: embedStudent, scheduleEmbedding: (task: () => Promise<unknown>) => { void task(); } }));
 vi.mock('@/lib/auth/profile', () => ({ currentProfile: current }));
 vi.mock('@/lib/auth/security', () => ({ sameOrigin: () => origin.ok, rateLimit: async () => true }));
 import { GET as getMe, PATCH as patchMe } from '@/app/api/students/me/route';
@@ -33,6 +35,7 @@ describe('auth', () => {
     as('business');
     expect((await getMe()).status).toBe(403);
     expect((await addItem(json('POST', validItem))).status).toBe(403);
+    expect(embedStudent).not.toHaveBeenCalled();
   });
   it('rejects cross-origin writes before touching the database', async () => {
     as('student');
@@ -40,6 +43,7 @@ describe('auth', () => {
     expect((await patchMe(json('PATCH', { bio: 'x' }))).status).toBe(403);
     expect((await removeItem(json('DELETE', {}), ctx)).status).toBe(403);
     expect(sql).not.toHaveBeenCalled();
+    expect(embedStudent).not.toHaveBeenCalled();
   });
 });
 
@@ -75,11 +79,14 @@ describe('profile', () => {
     expect((update[0] as string[]).join('?')).toContain('updated_at = now()');
     expect(update.slice(1)).toContain(PROFILE);
     expect(update.slice(1)).not.toContain('attacker');
+    expect(embedStudent).toHaveBeenCalledTimes(1);
+    expect(embedStudent).toHaveBeenCalledWith(PROFILE);
   });
   it('rejects invalid payloads with 400', async () => {
     as('student');
     expect((await patchMe(json('PATCH', { displayName: 'x' }))).status).toBe(400);
     expect((await patchMe(json('PATCH', null))).status).toBe(400);
+    expect(embedStudent).not.toHaveBeenCalled();
   });
 });
 
@@ -89,10 +96,13 @@ describe('portfolio', () => {
     sql.mockResolvedValueOnce([profileRow]).mockResolvedValueOnce([itemRow]).mockResolvedValueOnce([itemRow]).mockResolvedValue([]);
     const res = await addItem(json('POST', { ...validItem, javascript: 1, mediaUrl: 'javascript:alert(1)' }));
     expect(res.status).toBe(400);
+    expect(embedStudent).not.toHaveBeenCalled();
     sql.mockReset();
     sql.mockResolvedValueOnce([profileRow]).mockResolvedValueOnce([]).mockResolvedValueOnce([itemRow]).mockResolvedValue([]);
     expect((await addItem(json('POST', validItem))).status).toBe(201);
     expect(statements().some((s) => s.includes('UPDATE skillbridge.student_profiles SET updated_at = now()'))).toBe(true);
+    expect(embedStudent).toHaveBeenCalledTimes(1);
+    expect(embedStudent).toHaveBeenCalledWith(PROFILE);
   });
   it('returns 404 for another student\'s item or a malformed id, without bumping updated_at', async () => {
     sql.mockResolvedValueOnce([profileRow]).mockResolvedValueOnce([]).mockResolvedValue([]);
@@ -101,10 +111,19 @@ describe('portfolio', () => {
     expect(statements().some((s) => s.includes('SET updated_at = now()'))).toBe(false);
     const update = sql.mock.calls.find((c) => (c[0] as string[]).join('?').includes('student_portfolio_items SET'))!;
     expect(update.slice(1)).toContain(STUDENT);
+    expect(embedStudent).not.toHaveBeenCalled();
+  });
+  it('schedules one re-embedding after an item edit', async () => {
+    sql.mockResolvedValueOnce([profileRow]).mockResolvedValueOnce([]).mockResolvedValueOnce([itemRow]).mockResolvedValue([]);
+    expect((await editItem(json('PATCH', validItem), ctx)).status).toBe(200);
+    expect(embedStudent).toHaveBeenCalledTimes(1);
+    expect(embedStudent).toHaveBeenCalledWith(PROFILE);
   });
   it('deletes an owned item and bumps the profile', async () => {
     sql.mockResolvedValueOnce([profileRow]).mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: ITEM }]).mockResolvedValue([]);
     expect((await removeItem(json('DELETE', {}), ctx)).status).toBe(200);
     expect(statements().some((s) => s.includes('SET updated_at = now()'))).toBe(true);
+    expect(embedStudent).toHaveBeenCalledTimes(1);
+    expect(embedStudent).toHaveBeenCalledWith(PROFILE);
   });
 });

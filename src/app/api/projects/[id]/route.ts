@@ -1,6 +1,7 @@
 import { revalidateTag } from 'next/cache';
 import { apiError, ApiFailure, requireApiIdentity, requireOwnership } from '@/lib/api';
 import { PROJECTS_BOARD_TAG } from '@/lib/ws5/cache-tags';
+import { embedProject, scheduleEmbedding } from '@/lib/ai/embed-records';
 import { database } from '@/lib/db';
 import { sameOrigin } from '@/lib/auth/security';
 import { jsonBody, uuid, textField, textList } from '@/lib/validation';
@@ -56,6 +57,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     // Publishing, closing or cancelling changes what the public board shows. Best effort: the board also
     // expires on its own (see PROJECTS_BOARD_REVALIDATE_SECONDS), so a failed invalidation must not fail the request.
     try { revalidateTag(PROJECTS_BOARD_TAG, 'max'); } catch { /* no Next.js request context (e.g. unit tests) */ }
+    if (status === 'published') scheduleEmbedding(() => embedProject(id));
     return Response.json({ project: projectBrief(rows[0]) });
   } catch (error) {
     if (error instanceof Error && error.message.includes('Required questions are unanswered')) return apiError(new ApiFailure(409, 'PROJECT_NOT_READY', 'Answer all required questions before publishing.'));
