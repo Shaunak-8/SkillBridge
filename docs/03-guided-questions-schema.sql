@@ -6,7 +6,7 @@
 -- ==============================================================================
 
 -- 1. Modify the existing `projects` table to handle confirmation state
-ALTER TABLE projects 
+ALTER TABLE projects
   ADD COLUMN owner_confirmed BOOLEAN DEFAULT false,
   ADD COLUMN confirmed_at TIMESTAMP WITH TIME ZONE;
 
