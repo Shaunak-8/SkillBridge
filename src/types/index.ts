@@ -8,8 +8,10 @@ export interface User { id: string; name: string; email: string; role: Role; ava
 export interface StudentProfile extends User { role: "student"; headline: string; bio: string; location: string; skills: Skill[]; availability: string; education: string; portfolioUrl?: string; }
 export interface BusinessProfile extends User { role: "business"; businessName: string; industry: string; description: string; location: string; verified: boolean; }
 export interface ProjectRequirement { id: string; skill: Skill; level: "beginner" | "intermediate" | "advanced"; essential: boolean; }
+export interface ProjectQuestion { id: string; projectId: string; text: string; type: "yes_no" | "short_text" | "multiple_choice"; options?: string[]; sortOrder: number; }
+export interface ProjectAnswer { id: string; questionId: string; projectId: string; text: string; }
 export interface ProjectMilestone { id: string; title: string; dueDate: string; status: "upcoming" | "in_progress" | "complete"; }
-export interface Project { id: string; title: string; summary: string; description: string; businessId: string; businessName: string; category: string; location: string; status: ProjectStatus; mode: ProjectMode; budgetLabel: string; postedAt: string; duration: string; requirements: ProjectRequirement[]; milestones: ProjectMilestone[]; applicants: number; featured?: boolean; }
+export interface Project { id: string; title: string; summary: string; description: string; businessId: string; businessName: string; category: string; location: string; status: ProjectStatus; mode: ProjectMode; budgetLabel: string; postedAt: string; duration: string; requirements: ProjectRequirement[]; milestones: ProjectMilestone[]; applicants: number; featured?: boolean; ownerConfirmed?: boolean; confirmedAt?: string; openQuestions?: ProjectQuestion[]; }
 export interface Application { id: string; projectId: string; projectTitle: string; studentId: string; studentName: string; message: string; status: ApplicationStatus; matchScore: number; appliedAt: string; }
 export interface Team { id: string; name: string; projectId: string; memberIds: string[]; }
 export interface TeamMember { teamId: string; studentId: string; role: string; }
