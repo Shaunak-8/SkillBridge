@@ -1,4 +1,5 @@
 import { ApiFailure, apiError } from '@/lib/api';
+import { embedStudentByProfile, scheduleEmbedding } from '@/lib/ai/embed-records';
 import { deletePortfolioItem, getMyProfile, updatePortfolioItem } from '@/lib/students/service';
 import { readJson, studentMutationIdentity, validationFailed } from '@/lib/students/http';
 import { isUuid } from '@/lib/ws5/guard';
@@ -22,6 +23,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const student = await getMyProfile(profile.id);
     const updated = await updatePortfolioItem(student.id, itemId, validation.sanitized);
     if (!updated) throw notFound();
+    scheduleEmbedding(() => embedStudentByProfile(profile.id));
     return Response.json({ data: updated, message: 'Portfolio item updated successfully.' });
   } catch (error) { return apiError(error); }
 }
@@ -32,6 +34,7 @@ export async function DELETE(request: Request, ctx: Ctx) {
     const itemId = await ownedItemId(ctx);
     const student = await getMyProfile(profile.id);
     if (!(await deletePortfolioItem(student.id, itemId))) throw notFound();
+    scheduleEmbedding(() => embedStudentByProfile(profile.id));
     return Response.json({ success: true, message: 'Portfolio project deleted successfully.' });
   } catch (error) { return apiError(error); }
 }

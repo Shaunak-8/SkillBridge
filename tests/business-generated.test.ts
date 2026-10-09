@@ -4,6 +4,7 @@ vi.mock('server-only',()=>({}));
 const mock=vi.hoisted(()=>({db:vi.fn(),profile:vi.fn()}));
 vi.mock('@/lib/db',()=>({database:()=>mock.db()}));
 vi.mock('@/lib/auth/profile',()=>({currentProfile:mock.profile}));
+vi.mock('@/lib/ai/embed-records',()=>({embedProject:vi.fn(),scheduleEmbedding:()=>{}}));
 vi.mock('@/lib/auth/security',async original=>({...await original<typeof import('@/lib/auth/security')>(),rateLimit:async()=>true}));
 import { POST as generate } from '@/app/api/business/generate/route';
 import { POST as answer } from '@/app/api/projects/[id]/answers/route';
