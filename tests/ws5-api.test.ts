@@ -10,6 +10,8 @@ import { GET as recommend } from '@/app/api/projects/[id]/recommendations/route'
 import { POST as apply } from '@/app/api/projects/[id]/applications/route';
 import { GET as businessApps } from '@/app/api/business/projects/[id]/applications/route';
 import { PATCH as setStatus } from '@/app/api/applications/[id]/status/route';
+import { EmbeddingRetriever, LexicalRetriever } from '@/lib/matching/retriever';
+import { loadProjectRecommendationInput, loadStudentByProfile, loadStudentRecommendationInput } from '@/lib/ws5/repo';
 
 const PID = '11111111-1111-4111-8111-111111111111';
 const AID = '22222222-2222-4222-8222-222222222222';
@@ -37,8 +39,22 @@ describe('auth and ownership', () => {
   });
   it('returns 403 when a business views another owner\'s applications', async () => {
     as('business', BIZ);
-    sql.mockResolvedValueOnce([projectRow({ owner_profile_id: 'someone-else' })]);
-    expect((await businessApps(req(), ctx(PID))).status).toBe(403);
+    sql.mockResolvedValueOnce([projectRow({ owner_profile_id: 'someone-else' })]).mockResolvedValueOnce([{ ...studentRow, application_id: AID, total: 1 }]);
+    const res = await businessApps(req(), ctx(PID));
+    expect(res.status).toBe(403);
+    expect(await res.text()).not.toContain('Asha');
+  });
+  it('returns 403 and no candidates when a business asks for another owner\'s recommendations', async () => {
+    as('business', BIZ);
+    sql.mockResolvedValueOnce([projectRow({ owner_profile_id: 'someone-else' })]).mockResolvedValueOnce([studentRow]).mockResolvedValue([]);
+    const res = await recommend(req(), ctx(PID));
+    expect(res.status).toBe(403);
+    expect(await res.text()).not.toContain('Asha');
+  });
+  it('returns 404 when the project does not exist', async () => {
+    as('business', BIZ);
+    sql.mockResolvedValue([]);
+    expect((await recommend(req(), ctx(PID))).status).toBe(404);
   });
   it('returns 404 for malformed ids', async () => {
     as('business', BIZ);
@@ -112,11 +128,55 @@ describe('discover and candidates', () => {
   });
   it('never exposes email in recommended candidates', async () => {
     as('business', BIZ);
-    sql.mockResolvedValueOnce([projectRow()]).mockResolvedValueOnce([studentRow]).mockResolvedValueOnce([]);
+    sql.mockResolvedValueOnce([projectRow()]).mockResolvedValueOnce([studentRow]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     const res = await recommend(req(), ctx(PID));
     const text = await res.text();
     expect(res.status).toBe(200);
     expect(text).toContain('Lists required skill \\"React\\"');
     expect(text).not.toMatch(/email|asha@example/i);
+  });
+});
+
+describe('parallel loaders', () => {
+  const vec = '[1,0,0]';
+  it('maps the portfolio json column onto the student', async () => {
+    sql.mockResolvedValueOnce([{ ...studentRow, portfolio: [{ title: 'Cafe', description: 'Menu site', skillsUsed: ['React'] }, { title: 'Blog', description: null, skillsUsed: null }] }]);
+    const student = await loadStudentByProfile(STU);
+    expect(student?.portfolio).toEqual([{ title: 'Cafe', description: 'Menu site', skillsUsed: ['React'] }, { title: 'Blog', description: null, skillsUsed: [] }]);
+    expect(sql).toHaveBeenCalledTimes(1);
+  });
+  it('defaults to an empty portfolio when the column is missing', async () => {
+    sql.mockResolvedValueOnce([studentRow]);
+    expect((await loadStudentByProfile(STU))?.portfolio).toEqual([]);
+  });
+  it('loads a student recommendation page in one parallel round and falls back to lexical without vectors', async () => {
+    sql.mockResolvedValueOnce([studentRow]).mockResolvedValueOnce([projectRow()]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const input = await loadStudentRecommendationInput(STU);
+    expect(sql).toHaveBeenCalledTimes(4);
+    expect(input?.projects.map((p) => p.id)).toEqual([PID]);
+    expect(input?.retriever).toBeInstanceOf(LexicalRetriever);
+  });
+  it('uses embeddings when the query and candidate vectors are stored', async () => {
+    sql.mockResolvedValueOnce([studentRow]).mockResolvedValueOnce([projectRow()]).mockResolvedValueOnce([{ id: 's1', v: vec }]).mockResolvedValueOnce([{ id: PID, v: vec }]);
+    expect((await loadStudentRecommendationInput(STU))?.retriever).toBeInstanceOf(EmbeddingRetriever);
+  });
+  it('falls back to lexical when the vector query fails', async () => {
+    sql.mockResolvedValueOnce([studentRow]).mockResolvedValueOnce([projectRow()]).mockRejectedValueOnce(new Error('no column')).mockRejectedValueOnce(new Error('no column'));
+    expect((await loadStudentRecommendationInput(STU))?.retriever).toBeInstanceOf(LexicalRetriever);
+  });
+  it('returns null when the student has no profile row', async () => {
+    sql.mockResolvedValue([]);
+    expect(await loadStudentRecommendationInput(STU)).toBeNull();
+  });
+  it('blocks a non-owner and returns candidates only to the owner', async () => {
+    sql.mockResolvedValueOnce([projectRow({ owner_profile_id: 'someone-else' })]).mockResolvedValueOnce([studentRow]).mockResolvedValue([]);
+    expect(await loadProjectRecommendationInput(PID, BIZ)).toEqual({ kind: 'forbidden' });
+    sql.mockResolvedValueOnce([projectRow()]).mockResolvedValueOnce([studentRow]).mockResolvedValueOnce([{ id: PID, v: vec }]).mockResolvedValueOnce([{ id: 's1', v: vec }]);
+    const ok = await loadProjectRecommendationInput(PID, BIZ);
+    expect(ok.kind).toBe('ok');
+    if (ok.kind === 'ok') {
+      expect(ok.students).toHaveLength(1);
+      expect(ok.retriever).toBeInstanceOf(EmbeddingRetriever);
+    }
   });
 });
