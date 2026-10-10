@@ -18,7 +18,16 @@ describe('searchStudents SQL', () => {
     await searchStudents();
     const { text } = call();
     expect(text).toContain("sp.visibility IN ('public', 'matching')");
-    expect(text).not.toMatch(/email|username|auth_user_id|profile_id\s+AS|sp\.profile_id,|pr\.id\s+AS/i);
+    // Only real sign-ups: seeded and demo profiles have no Neon Auth login and must never be listed.
+    expect(text).toContain('neon_auth."user"');
+    expect(text).toMatch(/u\.id::text = pr\.auth_user_id/);
+    // The SELECT list (everything before the main FROM) must never carry contact or auth columns.
+    const selected = text.slice(0, text.indexOf('FROM skillbridge.student_profiles sp'));
+    expect(selected.length).toBeGreaterThan(0);
+    expect(selected).not.toMatch(/email|username|auth_user_id|profile_id|pr\.id/i);
+    expect(text).not.toMatch(/email|username/i);
+    // auth_user_id is only ever used inside the sign-up check, never selected or returned.
+    expect(text.match(/auth_user_id/g)).toHaveLength(1);
     expect(text).toContain('LIMIT ? OFFSET ?');
   });
   it('binds a hostile q as a value, never into the SQL text', async () => {

@@ -64,6 +64,8 @@ export async function searchStudents(f: DirectoryQuery = {}): Promise<DirectoryP
     FROM skillbridge.student_profiles sp
     JOIN skillbridge.profiles pr ON pr.id = sp.profile_id
     WHERE sp.visibility IN ('public', 'matching')
+      -- Only people who actually signed up: demo and seeded profiles have no Neon Auth login.
+      AND EXISTS (SELECT 1 FROM neon_auth."user" u WHERE u.id::text = pr.auth_user_id)
       AND (${pattern}::text IS NULL OR sp.bio ILIKE ${pattern}
         OR EXISTS (SELECT 1 FROM unnest(sp.skills) s WHERE s ILIKE ${pattern})
         OR EXISTS (SELECT 1 FROM unnest(sp.interests) s WHERE s ILIKE ${pattern})
