@@ -14,7 +14,7 @@ export function loginChat(session: ChatSession) {
     const config = publicChatConfig();
     if (!config) throw new Error('Messaging is not configured for this environment.');
     if (!initialized) initialized = CometChatUIKit.init(new UIKitSettingsBuilder().setAppId(config.appId).setRegion(config.region)
-      .subscribePresenceForFriends().setCallingEnabled(false).build()).catch(error => { initialized = null; throw error; });
+      .subscribePresenceForFriends().setCallingEnabled(false).build()).catch((error: unknown) => { initialized = null; throw error; });
     await initialized;
     if (generation !== chatGeneration()) throw new Error('Messaging session changed.');
     const existing = CometChatUIKit.getLoggedInUser();

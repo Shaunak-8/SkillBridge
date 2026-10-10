@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, LogOut, User } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui";
+import { useLanguage } from "@/lib/i18n/context";
 
 /** Header buttons that follow the session. The rest of the header stays static, so public pages can still be cached. */
 export function NavAuth() {
   const router = useRouter();
   const { data, isPending } = authClient.useSession();
+  const { t } = useLanguage();
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function signOut() {
@@ -28,10 +30,10 @@ export function NavAuth() {
     // /auth/continue sends each account to its own dashboard (student, business or admin).
     return (
       <div className="flex items-center gap-2">
-        <Link href="/auth/continue"><Button variant="ghost" className="gap-2"><User size={16} /><span className="hidden max-w-[10rem] truncate sm:inline">{data.user.name || "Dashboard"}</span></Button></Link>
-        <Button variant="secondary" disabled={loggingOut} onClick={() => void signOut()} className="gap-1.5 text-xs"><LogOut size={14} />{loggingOut ? "Logging out…" : "Log out"}</Button>
+        <Link href="/auth/continue"><Button variant="ghost" className="gap-2"><User size={16} /><span className="hidden max-w-[10rem] truncate sm:inline">{data.user.name || t('dashboard')}</span></Button></Link>
+        <Button variant="secondary" disabled={loggingOut} onClick={() => void signOut()} className="gap-1.5 text-xs"><LogOut size={14} />{loggingOut ? t('loading') : t('sign_out')}</Button>
       </div>
     );
   }
-  return <div className="flex items-center gap-2"><Link href="/login" className="hidden sm:block"><Button variant="ghost">Log in</Button></Link><Link href="/register"><Button>Get started <ArrowRight size={15} /></Button></Link></div>;
+  return <div className="flex items-center gap-2"><Link href="/login" className="hidden sm:block"><Button variant="ghost">{t('log_in')}</Button></Link><Link href="/register"><Button>{t('get_started')} <ArrowRight size={15} /></Button></Link></div>;
 }

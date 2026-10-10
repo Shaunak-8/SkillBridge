@@ -2,9 +2,11 @@
 import { useState } from "react";
 import Link from 'next/link';
 import { Button } from "@/components/ui";
+import { useLanguage } from "@/lib/i18n/context";
 import { publicChatConfig } from '@/lib/chat/config';
 
 export function ApplyForm({ projectId }: { projectId: string }) {
+  const { t } = useLanguage();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -13,23 +15,32 @@ export function ApplyForm({ projectId }: { projectId: string }) {
     try {
       const res = await fetch(`/api/projects/${projectId}/applications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cover_note: note }) });
       const data = await res.json().catch(() => null);
-      if (res.ok) setMsg({ ok: true, text: "Application sent. The business will review it and decide." });
-      else setMsg({ ok: false, text: res.status === 409 ? data?.error?.startsWith("You have already") ? "You have already applied to this project." : data?.error ?? "Conflict." : data?.error ?? "Could not send application." });
+      if (res.ok) setMsg({ ok: true, text: t('application_sent_success') });
+      else setMsg({ ok: false, text: res.status === 409 ? data?.error?.startsWith("You have already") ? t('already_applied') : data?.error ?? "Conflict." : data?.error ?? "Could not send application." });
     } catch { setMsg({ ok: false, text: "Network error. Try again." }); }
     setBusy(false);
   }
   if (msg?.ok) {
     return (
-      <div><p role="status" className="rounded-xl border-2 border-[#111111] bg-[#dbf5ed] p-4 text-sm font-bold text-emerald-800 shadow-[3px_3px_0_#111111]">
-        {msg.text}
-      </p>
-      {publicChatConfig() && <Link href={`/student/messages?project=${projectId}`} className="mt-4 inline-flex min-h-11 items-center font-semibold text-brand underline">Chat with the business</Link>}</div>
+      <div>
+        <p role="status" className="rounded-xl border-2 border-[#111111] bg-[#dbf5ed] p-4 text-sm font-bold text-emerald-800 shadow-[3px_3px_0_#111111]">
+          {msg.text}
+        </p>
+        {publicChatConfig() && (
+          <Link
+            href={`/student/messages?project=${projectId}`}
+            className="mt-3 inline-flex items-center gap-1.5 font-black text-[#D83D63] underline hover:text-[#c22e53]"
+          >
+            {t('chat_with_business') !== 'chat_with_business' ? t('chat_with_business') : 'Chat with the business'} →
+          </Link>
+        )}
+      </div>
     );
   }
   return (
     <form onSubmit={submit}>
       <label htmlFor="cover_note" className="text-xs font-black uppercase tracking-wider text-[#151515]">
-        Cover note
+        {t('cover_note')}
       </label>
       <textarea
         id="cover_note"
@@ -39,7 +50,7 @@ export function ApplyForm({ projectId }: { projectId: string }) {
         rows={6}
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="Why are you a good fit? Mention relevant skills or practical work."
+        placeholder={t('cover_note_placeholder')}
         className="mt-2 w-full rounded-xl border-2 border-[#111111] bg-white px-3.5 py-2.5 text-sm font-medium text-[#151515] outline-none shadow-[2px_2px_0_#111111] placeholder:text-[#655F52]/60 focus:bg-[#F7F0D2]/20 focus:shadow-[3px_3px_0_#111111] transition"
       />
       <p className="mt-1 text-right text-xs font-bold text-[#655F52]" aria-live="polite">
@@ -47,9 +58,8 @@ export function ApplyForm({ projectId }: { projectId: string }) {
       </p>
       {msg && <p role="alert" className="mb-2 text-xs font-bold text-[#D83D63]">{msg.text}</p>}
       <Button type="submit" disabled={busy || !note.trim()} className="w-full">
-        {busy ? "Sending..." : "Apply for this project"}
+        {busy ? t('sending') : t('apply_for_project_btn')}
       </Button>
     </form>
   );
-
 }
