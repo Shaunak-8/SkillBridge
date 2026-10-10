@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
+import Link from 'next/link';
 import { Button } from "@/components/ui";
+import { publicChatConfig } from '@/lib/chat/config';
 
 export function ApplyForm({ projectId }: { projectId: string }) {
   const [note, setNote] = useState("");
@@ -18,9 +20,10 @@ export function ApplyForm({ projectId }: { projectId: string }) {
   }
   if (msg?.ok) {
     return (
-      <p role="status" className="rounded-xl border-2 border-[#111111] bg-[#dbf5ed] p-4 text-sm font-bold text-emerald-800 shadow-[3px_3px_0_#111111]">
+      <div><p role="status" className="rounded-xl border-2 border-[#111111] bg-[#dbf5ed] p-4 text-sm font-bold text-emerald-800 shadow-[3px_3px_0_#111111]">
         {msg.text}
       </p>
+      {publicChatConfig() && <Link href={`/student/messages?project=${projectId}`} className="mt-4 inline-flex min-h-11 items-center font-semibold text-brand underline">Chat with the business</Link>}</div>
     );
   }
   return (

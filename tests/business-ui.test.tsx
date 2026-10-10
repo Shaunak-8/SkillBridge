@@ -19,7 +19,7 @@ it('renders an actionable empty dashboard without fake records', () => {
 });
 it('renders loading and recoverable error states with accessible status roles', () => {
   expect(renderToStaticMarkup(<Loading />)).toContain('role="status"');
-  const html = renderToStaticMarkup(<ErrorPage reset={() => {}} />); expect(html).toContain('role="alert"'); expect(html).toContain('Try again');
+  const html = renderToStaticMarkup(<ErrorPage retry={() => {}} />); expect(html).toContain('role="alert"'); expect(html).toContain('Try again');
 });
 it('associates business profile labels and explains supported languages', () => {
   const html = renderToStaticMarkup(<BusinessProfileForm profile={null} onboarding />);

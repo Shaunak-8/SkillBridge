@@ -1,11 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateInputSchema, projectDraftSchema } from "../schemas";
 import { generateProjectDraft } from "../generator";
-import { buildFallbackDraft, buildUserPrompt } from "../prompt";
-
-vi.mock("server-only", () => ({}));
-// No DATABASE_URL in unit tests: retrieval must fall back to the seed knowledge base.
-vi.mock("@/lib/db", () => ({ database: () => { throw new Error("DATABASE_URL is missing."); } }));
+import { DEFAULT_GEMINI_MODEL } from "../model";
 
 vi.mock("server-only", () => ({}));
 // No DATABASE_URL in unit tests: retrieval must fall back to the seed knowledge base.
@@ -102,6 +98,18 @@ describe("AI Project Draft Generator & Gemini Integration", () => {
   });
 
   describe("Gemini Provider Call & Fallback Handling", () => {
+    it("uses the current default model when no override is configured", async () => {
+      process.env.GEMINI_API_KEY = "test_gemini_key";
+      delete process.env.LLM_MODEL;
+      const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+      vi.stubGlobal("fetch", fetcher);
+      await generateProjectDraft({ rawProblemText: "We need billing management software for our website." });
+      expect(DEFAULT_GEMINI_MODEL).toBe("gemini-3.5-flash-lite");
+      expect(fetcher).toHaveBeenCalledWith(
+        `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_GEMINI_MODEL}:generateContent`,
+        expect.objectContaining({ method: "POST", headers: expect.objectContaining({ "x-goog-api-key": "test_gemini_key" }) })
+      );
+    });
     it("successfully parses valid Gemini API response", async () => {
       process.env.GEMINI_API_KEY = "test_gemini_key";
       process.env.LLM_MODEL = "gemini-2.5-flash-lite";
@@ -225,6 +233,15 @@ describe("AI Project Draft Generator & Gemini Integration", () => {
 
       expect(result.isFallback).toBe(true);
       expect(result.fallbackReason).toBeDefined();
+    });
+
+    it.each([null, "connection closed", { message: "opaque provider failure" }])("handles non-Error provider failures safely (%j)", async (failure) => {
+      process.env.GEMINI_API_KEY = "test_gemini_key";
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(failure));
+      const result = await generateProjectDraft({ rawProblemText: "Testing unexpected provider failure handling." });
+      expect(result.isFallback).toBe(true);
+      expect(result.fallbackReason).toBe("Failed to reach Gemini API endpoint.");
+      expect(result.draft).toBeDefined();
     });
 
     it("handles request timeout gracefully with fallback flag", async () => {

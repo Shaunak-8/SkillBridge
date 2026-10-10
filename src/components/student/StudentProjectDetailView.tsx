@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Badge, SectionTitle } from '@/components/ui';
 import { SkillBadge } from '@/components/shared/ProjectCard';
 import { MapPin } from 'lucide-react';
@@ -31,14 +31,7 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
   const { isSpeaking, speak, stop: stopSpeaking } = useTextToSpeech();
   const ownerLang = project.preferredLanguage || 'en';
 
-  // If the owner's preferred language is non-English, ensure English version is loaded for the student
-  useEffect(() => {
-    if (ownerLang !== 'en') {
-      void translateToEnglish();
-    }
-  }, [project.id, ownerLang]);
-
-  async function translateToEnglish() {
+  const translateToEnglish = useCallback(async () => {
     setIsTranslatingToEnglish(true);
     try {
       const [titleRes, summaryRes, problemRes] = await Promise.all([
@@ -55,7 +48,14 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
     } finally {
       setIsTranslatingToEnglish(false);
     }
-  }
+  }, [project.problemStatement, project.summary, project.title]);
+
+  // If the owner's preferred language is non-English, ensure English version is loaded for the student.
+  useEffect(() => {
+    if (ownerLang === 'en') return;
+    const timer = window.setTimeout(() => void translateToEnglish(), 0);
+    return () => window.clearTimeout(timer);
+  }, [ownerLang, project.id, translateToEnglish]);
 
   const toggleAudio = () => {
     if (isSpeaking) {

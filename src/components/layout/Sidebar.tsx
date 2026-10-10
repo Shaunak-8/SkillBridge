@@ -5,12 +5,14 @@ import {
   ClipboardCheck,
   FolderKanban,
   LayoutDashboard,
+  MessageSquare,
   Settings,
   Sparkles,
   UserCheck,
   Users,
 } from "lucide-react";
 import type { Role } from "@/types";
+import { publicChatConfig } from "@/lib/chat/config";
 import { BusinessNav } from "@/components/business/BusinessNav";
 
 const links: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
@@ -35,6 +37,10 @@ const links: Record<Role, { href: string; label: string; icon: typeof LayoutDash
     { href: "/admin/projects", label: "Projects", icon: FolderKanban },
   ],
 };
+
+if (publicChatConfig()) {
+  links.student.push({ href: '/student/messages', label: 'Messages', icon: MessageSquare });
+}
 
 export function Sidebar({ role }: { role: Role }) {
   return (

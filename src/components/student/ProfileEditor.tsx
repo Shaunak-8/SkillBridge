@@ -150,8 +150,8 @@ export function ProfileEditor({ initialProfile, onProfileUpdated }: ProfileEdito
       onProfileUpdated(json.data);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
-    } catch (err: any) {
-      setGlobalError(err.message || "Failed to save profile. Please try again.");
+    } catch (err) {
+      setGlobalError(err instanceof Error && err.message ? err.message : "Failed to save profile. Please try again.");
     } finally {
       setIsSaving(false);
     }

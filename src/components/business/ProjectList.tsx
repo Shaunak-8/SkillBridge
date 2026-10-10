@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Clock, ExternalLink, FileEdit, Sparkles, Trash2, Users } from 'lucide-react';
-import { Badge, Card, Button } from '@/components/ui';
+import { Badge, Card } from '@/components/ui';
 import type { BusinessProject } from '@/lib/business/contracts';
 import { DeleteProjectModal } from './DeleteProjectModal';
 

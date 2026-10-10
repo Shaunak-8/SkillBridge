@@ -74,7 +74,7 @@ describe('invariants over the whole fixture', () => {
   });
 
   it('never sends remote-only students to on-site projects', () => {
-    for (const { s, out } of forStudents.filter((x) => x.s.remotePreference === 'remote'))
+    for (const { out } of forStudents.filter((x) => x.s.remotePreference === 'remote'))
       for (const id of ids(out)) expect(byId(projects, id).remoteOk).toBe(true);
   });
 

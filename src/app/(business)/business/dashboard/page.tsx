@@ -6,7 +6,6 @@ import {
   Users,
   Sparkles,
   ArrowRight,
-  MessageSquare,
   CheckCircle2,
 } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';

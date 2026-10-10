@@ -29,8 +29,9 @@ assert.equal(login.status, 200, 'Verified account login'); pass('verified email/
 assert.ok(login.headers.getSetCookie().some(c => /httponly/i.test(c)), 'Session must use HttpOnly cookies'); pass('HttpOnly session cookie');
 const userSession = await (await request('/api/auth/get-session')).json();
 assert.ok(userSession?.user?.id); assert.equal(userSession.user.emailVerified, true); pass('verified session restored from cookies');
-await new Promise(resolve => setTimeout(resolve, 1100));
-assert.ok((await (await request('/api/auth/get-session')).json())?.user?.id); pass('session persists after session-cache expiry');
+// Simulate browser cache expiry without depending on the configured cache TTL.
+cookies.delete('__Secure-neon-auth.local.session_data');
+assert.ok((await (await request('/api/auth/get-session')).json())?.user?.id); pass('session persists after session-cache removal');
 const continuation = await request('/auth/continue');
 assert.equal(continuation.status, 307); pass('authenticated callback redirects');
 const profileResponse = await request('/api/profile');
