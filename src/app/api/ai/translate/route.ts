@@ -25,7 +25,12 @@ export async function POST(request: Request) {
     if (!parsed.success) throw new ApiFailure(400, 'VALIDATION_ERROR', `Send { text, targetLang, sourceLang } with text up to ${MAX_TEXT_CHARS} characters and a supported language.`);
     const { text, targetLang, sourceLang } = parsed.data;
     if (!text.trim()) return NextResponse.json({ translatedText: '', sourceLang, targetLang });
-    return NextResponse.json(await translateText(text, targetLang, sourceLang));
+    const result = await translateText(text, targetLang, sourceLang);
+    return NextResponse.json({
+      translatedText: result.translatedText,
+      sourceLang: result.sourceLang,
+      targetLang: result.targetLang,
+    });
   } catch (error) {
     return apiError(error);
   }
