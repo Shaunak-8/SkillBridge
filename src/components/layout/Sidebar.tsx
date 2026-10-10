@@ -28,7 +28,7 @@ const links: Record<Role, { href: string; label: string; icon: typeof LayoutDash
     { href: "/business/dashboard", label: "Overview", icon: LayoutDashboard },
     { href: "/business/projects/new", label: "Create a Project", icon: Sparkles },
     { href: "/business/projects", label: "My Projects", icon: FolderKanban },
-    { href: "/business/screening", label: "Find Students", icon: Users },
+    { href: "/business/students", label: "Find Students", icon: Users },
     { href: "/business/profile", label: "Business Profile", icon: Settings },
   ],
   admin: [

@@ -10,7 +10,7 @@ const links = [
   { href: '/business/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/business/projects/new', label: 'Post a Problem', icon: Sparkles },
   { href: '/business/projects', label: 'My Projects', icon: FolderKanban },
-  { href: '/business/screening', label: 'Find Students', icon: Users },
+  { href: '/business/students', label: 'Find Students', icon: Users },
   { href: '/business/profile', label: 'Business Profile', icon: Settings },
 ];
 
