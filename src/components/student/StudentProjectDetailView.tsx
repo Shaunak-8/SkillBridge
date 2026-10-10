@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Calendar,
   CheckCircle2,
   Clock,
-  ExternalLink,
   Globe,
   IndianRupee,
   Layers,
@@ -21,7 +20,6 @@ import { Badge, Card } from '@/components/ui';
 import { SkillBadge } from '@/components/shared/ProjectCard';
 import { useTextToSpeech } from '@/lib/utils/speech';
 import type { FullProjectDetail } from '@/lib/ws5/repo';
-
 import { useLanguage } from '@/lib/i18n/context';
 
 interface StudentProjectDetailViewProps {
@@ -29,7 +27,7 @@ interface StudentProjectDetailViewProps {
 }
 
 export function StudentProjectDetailView({ project }: StudentProjectDetailViewProps) {
-  const { locale, language } = useLanguage();
+  const { locale, language, t } = useLanguage();
   const [showOriginal, setShowOriginal] = useState(false);
   const [activeTranslation, setActiveTranslation] = useState<{
     title?: string;
@@ -41,31 +39,6 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
 
   const { isSpeaking, speak, stop: stopSpeaking } = useTextToSpeech();
   const originalLang = project.preferredLanguage || 'en';
-
-  // Toggle voice narration of the project brief
-  const toggleAudio = () => {
-    if (isSpeaking) {
-      stopSpeaking();
-    } else {
-      const isUsingTranslation = !showOriginal && activeTranslation;
-      const tTitle = isUsingTranslation && activeTranslation?.title ? activeTranslation.title : project.title;
-      const tSummary = isUsingTranslation && activeTranslation?.summary ? activeTranslation.summary : project.summary;
-      const tProblem = isUsingTranslation && activeTranslation?.problemStatement ? activeTranslation.problemStatement : project.problemStatement;
-      const tDelivs = isUsingTranslation && activeTranslation?.deliverables ? activeTranslation.deliverables : project.deliverables;
-
-      const textToRead = [
-        tTitle,
-        `Project Goals: ${tSummary}`,
-        tProblem ? `The Problem: ${tProblem}` : '',
-        tDelivs?.length ? `Deliverables: ${tDelivs.join('. ')}` : '',
-      ]
-        .filter(Boolean)
-        .join('. ');
-
-      const voiceLang = isUsingTranslation ? locale : originalLang;
-      speak(textToRead, voiceLang);
-    }
-  };
 
   const handleTranslateBrief = async () => {
     if (activeTranslation) {
@@ -127,10 +100,46 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
     }
   };
 
+  // Auto-translate project brief whenever the user selects a language different from English
+  useEffect(() => {
+    if (locale !== originalLang) {
+      setActiveTranslation(null);
+      void handleTranslateBrief();
+    } else {
+      setActiveTranslation(null);
+      setShowOriginal(false);
+    }
+  }, [locale, originalLang]);
+
+  // Toggle voice narration of the project brief
+  const toggleAudio = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    } else {
+      const isUsingTranslation = !showOriginal && activeTranslation;
+      const tTitle = isUsingTranslation && activeTranslation?.title ? activeTranslation.title : project.title;
+      const tSummary = isUsingTranslation && activeTranslation?.summary ? activeTranslation.summary : project.summary;
+      const tProblem = isUsingTranslation && activeTranslation?.problemStatement ? activeTranslation.problemStatement : project.problemStatement;
+      const tDelivs = isUsingTranslation && activeTranslation?.deliverables ? activeTranslation.deliverables : project.deliverables;
+
+      const textToRead = [
+        tTitle,
+        `${t('project_goals')}: ${tSummary}`,
+        tProblem ? `${t('the_problem')}: ${tProblem}` : '',
+        tDelivs?.length ? `${t('expected_deliverables')}: ${tDelivs.join('. ')}` : '',
+      ]
+        .filter(Boolean)
+        .join('. ');
+
+      const voiceLang = isUsingTranslation ? locale : originalLang;
+      speak(textToRead, voiceLang);
+    }
+  };
+
   const formattedDate = project.publishedAt
-    ? new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(project.publishedAt))
+    ? new Intl.DateTimeFormat(locale === 'en' ? 'en-IN' : locale, { dateStyle: 'medium' }).format(new Date(project.publishedAt))
     : project.createdAt
-    ? new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(project.createdAt))
+    ? new Intl.DateTimeFormat(locale === 'en' ? 'en-IN' : locale, { dateStyle: 'medium' }).format(new Date(project.createdAt))
     : 'Recently';
 
   const displayedTitle = showOriginal || !activeTranslation?.title ? project.title : activeTranslation.title;
@@ -148,10 +157,10 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
             <span className="rounded-lg border-2 border-[#111111] bg-[#F2BE4E] px-2.5 py-0.5 text-xs font-black text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
               {project.category || 'General Project'}
             </span>
-            <Badge tone="green">Open for Applications</Badge>
+            <Badge tone="green">{t('open_for_applications')}</Badge>
             {project.remoteOk && (
               <span className="rounded-lg border border-[#111111] bg-[#dbf5ed] px-2.5 py-0.5 text-xs font-bold text-emerald-900">
-                Remote OK
+                {t('remote_ok')}
               </span>
             )}
           </div>
@@ -167,11 +176,11 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
                 <Globe size={14} className="text-[#D83D63]" />
                 <span>
                   {isTranslating
-                    ? 'Translating...'
+                    ? t('loading')
                     : activeTranslation
                     ? showOriginal
                       ? `Show ${language.name}`
-                      : 'Show Original'
+                      : t('view_original')
                     : `Translate to ${language.name}`}
                 </span>
               </button>
@@ -181,10 +190,10 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
               type="button"
               onClick={toggleAudio}
               className="btn-press inline-flex items-center gap-1.5 rounded-xl border-2 border-[#111111] bg-[#F7F0D2] px-3 py-1.5 text-xs font-black text-[#151515] shadow-[2px_2px_0_#111111] hover:bg-[#F2BE4E] transition"
-              aria-label={isSpeaking ? 'Stop audio narration' : 'Listen to project brief'}
+              aria-label={isSpeaking ? t('stop_audio') : t('listen_to_brief')}
             >
               {isSpeaking ? <VolumeX size={14} className="text-[#D83D63]" /> : <Volume2 size={14} />}
-              <span>{isSpeaking ? 'Stop Audio' : 'Listen to Brief'}</span>
+              <span>{isSpeaking ? t('stop_audio') : t('listen_to_brief')}</span>
             </button>
           </div>
         </div>
@@ -194,15 +203,15 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
           <div className="mt-3 flex items-center justify-between rounded-lg border border-[#111111]/20 bg-[#F7F0D2]/40 px-3 py-1.5 text-xs font-bold text-[#655F52]">
             <span>
               {showOriginal
-                ? `Showing canonical original in ${originalLang.toUpperCase()}`
-                : `Translated into ${language.name} (${language.nativeName}) • Canonical brief remains unchanged`}
+                ? `Canonical original in ${originalLang.toUpperCase()}`
+                : `${t('translated_from')} English (${language.nativeName})`}
             </span>
             <button
               type="button"
               onClick={() => setShowOriginal(!showOriginal)}
               className="text-[#D83D63] underline hover:text-[#c22e53]"
             >
-              {showOriginal ? `View ${language.name}` : 'View Original (English)'}
+              {showOriginal ? `View in ${language.name}` : t('view_original')}
             </button>
           </div>
         )}
@@ -222,19 +231,20 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
           <div className="inline-flex items-center gap-2">
             <Store size={16} className="text-[#D83D63]" />
             <span>
-              Posted by <span className="font-black text-[#151515]">{project.businessName || 'Verified Local Business'}</span>
+              {t('posted_by')}{' '}
+              <span className="font-black text-[#151515]">{project.businessName || 'Verified Local Business'}</span>
               {project.businessType ? ` (${project.businessType})` : ''}
             </span>
           </div>
 
           <div className="inline-flex items-center gap-1.5 text-[#655F52]">
             <MapPin size={15} />
-            <span>{project.locationText || project.businessLocation || (project.remoteOk ? 'Remote Friendly' : 'India')}</span>
+            <span>{project.locationText || project.businessLocation || (project.remoteOk ? t('remote_ok') : 'India')}</span>
           </div>
 
           <div className="inline-flex items-center gap-1.5 text-[#655F52]">
             <Calendar size={15} />
-            <span>Published {formattedDate}</span>
+            <span>{t('published_on')} {formattedDate}</span>
           </div>
 
           {originalLang !== 'en' && (
@@ -254,8 +264,8 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
               <Sparkles size={16} className="text-[#151515]" />
             </div>
             <div>
-              <h2 className="text-base font-black text-[#151515]">The Problem Statement</h2>
-              <p className="text-xs text-[#655F52]">Real operational or digital bottleneck the business is facing</p>
+              <h2 className="text-base font-black text-[#151515]">{t('the_problem')}</h2>
+              <p className="text-xs text-[#655F52]">{t('the_problem_sub')}</p>
             </div>
           </div>
           <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-[#151515] font-medium bg-[#F7F0D2]/25 p-4 rounded-xl border border-[#111111]/15">
@@ -272,8 +282,8 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
               <CheckCircle2 size={16} />
             </div>
             <div>
-              <h2 className="text-base font-black text-[#151515]">Expected Deliverables</h2>
-              <p className="text-xs text-[#655F52]">Concrete outputs you will build and hand over to the business</p>
+              <h2 className="text-base font-black text-[#151515]">{t('expected_deliverables')}</h2>
+              <p className="text-xs text-[#655F52]">{t('deliverables_sub')}</p>
             </div>
           </div>
           <ul className="mt-4 space-y-2.5">
@@ -300,8 +310,8 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
               <Layers size={16} className="text-[#151515]" />
             </div>
             <div>
-              <h2 className="text-base font-black text-[#151515]">Required Skills & Knowledge</h2>
-              <p className="text-xs text-[#655F52]">Competencies that match this project challenge</p>
+              <h2 className="text-base font-black text-[#151515]">{t('required_skills')}</h2>
+              <p className="text-xs text-[#655F52]">{t('skills_sub')}</p>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -317,7 +327,7 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
         <div className="rounded-2xl border-2 border-[#111111] bg-white p-5 shadow-[3px_3px_0_#111111]">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#655F52]">
             <IndianRupee size={15} className="text-[#D83D63]" />
-            <span>Compensation</span>
+            <span>{t('compensation')}</span>
           </div>
           <p className="mt-2 text-base font-black text-[#151515]">
             {project.budgetLabel || (project.compensation === 'paid' ? 'Paid Project' : project.compensation === 'negotiable' ? 'Stipend Negotiable' : 'Learning Project')}
@@ -330,7 +340,7 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
         <div className="rounded-2xl border-2 border-[#111111] bg-white p-5 shadow-[3px_3px_0_#111111]">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#655F52]">
             <Clock size={15} className="text-[#D83D63]" />
-            <span>Timeline</span>
+            <span>{t('timeline')}</span>
           </div>
           <p className="mt-2 text-base font-black text-[#151515]">
             {project.timeline || 'Flexible Duration (2–4 weeks)'}
@@ -343,7 +353,7 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
         <div className="rounded-2xl border-2 border-[#111111] bg-white p-5 shadow-[3px_3px_0_#111111]">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#655F52]">
             <Users2 size={15} className="text-[#D83D63]" />
-            <span>Project Mode</span>
+            <span>{t('project_mode')}</span>
           </div>
           <p className="mt-2 text-base font-black text-[#151515]">
             {project.mode === 'team' ? 'Student Team (2–3)' : 'Individual Builder'}

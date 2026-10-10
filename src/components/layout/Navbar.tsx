@@ -5,9 +5,11 @@ import { Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { NavAuth } from "./NavAuth";
 import { LanguageSelector } from "./LanguageSelector";
+import { useLanguage } from "@/lib/i18n/context";
 
 export function Navbar() {
   const { data } = authClient.useSession();
+  const { t } = useLanguage();
 
   return (
     <header className="border-b-2 border-[#111111] bg-white sticky top-0 z-40">
@@ -23,17 +25,17 @@ export function Navbar() {
 
         <nav className="hidden items-center gap-7 text-xs sm:text-sm font-bold text-[#151515] md:flex">
           <Link href="/projects" className="transition hover:text-[#D83D63]">
-            Explore projects
+            {t('explore_projects')}
           </Link>
           <Link href="/community" className="transition hover:text-[#D83D63]">
-            Community
+            {t('community')}
           </Link>
           <Link href="/about" className="transition hover:text-[#D83D63]">
-            How it works
+            {t('how_it_works')}
           </Link>
           {!data?.user && (
             <Link href="/register" className="transition hover:text-[#D83D63]">
-              For businesses
+              {t('for_businesses')}
             </Link>
           )}
         </nav>

@@ -3,18 +3,20 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, FolderKanban, Sparkles, Settings, Users, MessageSquare } from 'lucide-react';
-
-const links = [
-  { href: '/business/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/business/projects/new', label: 'Post a Problem', icon: Sparkles },
-  { href: '/business/projects', label: 'My Projects', icon: FolderKanban },
-  { href: '/community', label: 'Community', icon: MessageSquare },
-  { href: '/business/screening', label: 'Find Students', icon: Users },
-  { href: '/business/profile', label: 'Business Profile', icon: Settings },
-];
+import { useLanguage } from '@/lib/i18n/context';
 
 export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
   const path = usePathname();
+  const { t } = useLanguage();
+
+  const links = [
+    { href: '/business/dashboard', label: t('nav_overview'), icon: LayoutDashboard },
+    { href: '/business/projects/new', label: t('nav_create_project'), icon: Sparkles },
+    { href: '/business/projects', label: t('nav_my_projects'), icon: FolderKanban },
+    { href: '/community', label: t('community'), icon: MessageSquare },
+    { href: '/business/screening', label: t('nav_find_students'), icon: Users },
+    { href: '/business/profile', label: t('nav_business_profile'), icon: Settings },
+  ];
 
   return (
     <nav

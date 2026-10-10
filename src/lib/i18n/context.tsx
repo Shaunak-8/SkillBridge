@@ -15,7 +15,7 @@ const LanguageContext = createContext<LanguageContextType>({
   locale: DEFAULT_LANGUAGE,
   language: SUPPORTED_LANGUAGES[0],
   setLocale: () => {},
-  t: (key: string) => key,
+  t: (key: string) => getTranslation(DEFAULT_LANGUAGE, key),
 });
 
 export function LanguageProvider({
