@@ -126,6 +126,11 @@ BEGIN
   EXCEPTION WHEN check_violation THEN NULL; END;
   INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, invited_by, expires_at)
     VALUES (team_a, team_project, s[7], 'member', 'invited', s[1], now() + interval '7 days');
+  -- The team is full again (leader + 3 invites + s7), so refreshing the expired invite must not sneak a sixth in.
+  BEGIN
+    UPDATE skillbridge.team_members SET expires_at = now() + interval '7 days' WHERE team_id = team_a AND student_id = s[6];
+    RAISE EXCEPTION 'Refreshing an expired invite exceeded the team size';
+  EXCEPTION WHEN check_violation THEN NULL; END;
 
   -- Accepting makes a member active; one active team per student per project.
   UPDATE skillbridge.team_members SET status = 'active', joined_at = now(), responded_at = now() WHERE team_id = team_a AND student_id = s[2];
@@ -244,6 +249,37 @@ BEGIN
     RAISE EXCEPTION 'Team application on a different project than the team accepted';
   EXCEPTION WHEN foreign_key_violation THEN NULL; END;
   INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[7], 'Team application', team_a);
+  -- Nobody applies twice: a solo application blocks joining a team, and team members cannot apply solo.
+  INSERT INTO skillbridge.applications(project_id, student_id, cover_note) VALUES (team_project, s[4], 'My own application');
+  BEGIN
+    UPDATE skillbridge.team_members SET status = 'active', joined_at = now() WHERE team_id = team_a AND student_id = s[4];
+    RAISE EXCEPTION 'Student with their own application joined a team';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  UPDATE skillbridge.applications SET status = 'withdrawn' WHERE project_id = team_project AND student_id = s[4];
+  UPDATE skillbridge.team_members SET status = 'active', joined_at = now() WHERE team_id = team_a AND student_id = s[4];
+  BEGIN
+    INSERT INTO skillbridge.applications(project_id, student_id, cover_note) VALUES (team_project, s[1], 'Solo while on a team');
+    RAISE EXCEPTION 'Team member applied on their own';
+  EXCEPTION WHEN check_violation OR unique_violation THEN NULL; END;
+
+  -- Accepting a team application activates the team and drops pending invitations (the roster is final).
+  UPDATE skillbridge.team_members SET status = 'active', joined_at = now(), responded_at = now() WHERE team_id = team_b AND student_id = s[2];
+  INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[8], 'Team B application', team_b);
+  UPDATE skillbridge.applications SET status = 'accepted' WHERE team_id = team_b;
+  IF NOT EXISTS (SELECT 1 FROM skillbridge.teams WHERE id = team_b AND status = 'active') THEN
+    RAISE EXCEPTION 'Accepted application did not activate the team';
+  END IF;
+  IF EXISTS (SELECT 1 FROM skillbridge.team_members WHERE team_id = team_b AND status = 'invited') THEN
+    RAISE EXCEPTION 'Pending invitations survived the acceptance';
+  END IF;
+  -- Declining or withdrawing disbands the team and frees every member.
+  UPDATE skillbridge.applications SET status = 'declined' WHERE team_id = team_a;
+  IF NOT EXISTS (SELECT 1 FROM skillbridge.teams WHERE id = team_a AND status = 'disbanded') THEN
+    RAISE EXCEPTION 'Declined application did not disband the team';
+  END IF;
+  SELECT count(*) INTO affected FROM skillbridge.team_members WHERE team_id = team_a AND status IN ('invited', 'active');
+  IF affected <> 0 THEN RAISE EXCEPTION 'Declined team still has % open memberships', affected; END IF;
+  INSERT INTO skillbridge.applications(project_id, student_id, cover_note) VALUES (team_project, s[1], 'Free to apply again');
   BEGIN
     DELETE FROM skillbridge.teams WHERE id = team_a;
     RAISE EXCEPTION 'Team with an application was deleted';

@@ -109,7 +109,9 @@ BEGIN
     END IF;
   END IF;
 
-  IF NEW.status IN ('invited', 'active') AND (TG_OP = 'INSERT' OR NEW.status IS DISTINCT FROM OLD.status) THEN
+  -- A change of expiry also counts: refreshing an expired invitation makes it occupy a slot again.
+  IF NEW.status IN ('invited', 'active')
+     AND (TG_OP = 'INSERT' OR NEW.status IS DISTINCT FROM OLD.status OR NEW.expires_at IS DISTINCT FROM OLD.expires_at) THEN
     SELECT t.status, p.status INTO team_status, project_status
       FROM skillbridge.teams t JOIN skillbridge.projects p ON p.id = t.project_id
       WHERE t.id = NEW.team_id FOR NO KEY UPDATE OF t;
@@ -119,6 +121,12 @@ BEGIN
     IF TG_OP = 'UPDATE' AND OLD.status = 'invited' AND NEW.status = 'active'
        AND OLD.expires_at IS NOT NULL AND OLD.expires_at <= clock_timestamp() THEN
       RAISE EXCEPTION 'The invitation has expired' USING ERRCODE = 'check_violation';
+    END IF;
+    -- A student applies once per project: their own live application blocks joining (or leading) a team.
+    IF NEW.status = 'active' AND EXISTS (SELECT 1 FROM skillbridge.applications a
+         WHERE a.project_id = NEW.project_id AND a.student_id = NEW.student_id AND a.team_id IS NULL
+           AND a.status NOT IN ('declined', 'withdrawn')) THEN
+      RAISE EXCEPTION 'This student already applied to the project on their own' USING ERRCODE = 'check_violation';
     END IF;
     SELECT count(*) INTO occupied FROM skillbridge.team_members m
       WHERE m.team_id = NEW.team_id AND m.id <> NEW.id
@@ -290,6 +298,38 @@ END $$;
 DROP TRIGGER IF EXISTS applications_validate_team ON skillbridge.applications;
 CREATE TRIGGER applications_validate_team BEFORE INSERT OR UPDATE OF team_id ON skillbridge.applications
   FOR EACH ROW WHEN (NEW.team_id IS NOT NULL) EXECUTE FUNCTION skillbridge.applications_validate_team();
+
+-- An active member of a forming or active team cannot also apply to that project on their own.
+CREATE OR REPLACE FUNCTION skillbridge.applications_block_member_solo() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM skillbridge.team_members m JOIN skillbridge.teams t ON t.id = m.team_id
+             WHERE m.project_id = NEW.project_id AND m.student_id = NEW.student_id AND m.status = 'active'
+               AND t.status IN ('forming', 'active')) THEN
+    RAISE EXCEPTION 'You are on a team for this project; apply through your team' USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS applications_block_member_solo ON skillbridge.applications;
+CREATE TRIGGER applications_block_member_solo BEFORE INSERT ON skillbridge.applications
+  FOR EACH ROW WHEN (NEW.team_id IS NULL) EXECUTE FUNCTION skillbridge.applications_block_member_solo();
+
+-- The business decision drives the team: acceptance activates it and freezes the roster as the business saw it
+-- (pending invitations are declined); a declined or withdrawn application disbands it and frees every member.
+CREATE OR REPLACE FUNCTION skillbridge.applications_sync_team() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.status = 'accepted' THEN
+    UPDATE skillbridge.team_members SET status = 'declined', responded_at = now()
+      WHERE team_id = NEW.team_id AND status = 'invited';
+    UPDATE skillbridge.teams SET status = 'active' WHERE id = NEW.team_id AND status = 'forming';
+  ELSIF NEW.status IN ('declined', 'withdrawn') THEN
+    UPDATE skillbridge.teams SET status = 'disbanded' WHERE id = NEW.team_id AND status IN ('forming', 'active');
+  END IF;
+  RETURN NULL;
+END $$;
+DROP TRIGGER IF EXISTS applications_sync_team ON skillbridge.applications;
+CREATE TRIGGER applications_sync_team AFTER UPDATE OF status ON skillbridge.applications
+  FOR EACH ROW WHEN (NEW.team_id IS NOT NULL AND NEW.status IS DISTINCT FROM OLD.status)
+  EXECUTE FUNCTION skillbridge.applications_sync_team();
 
 REVOKE ALL ON skillbridge.teams, skillbridge.team_members, skillbridge.team_tasks, skillbridge.team_events FROM PUBLIC;
 COMMIT;

@@ -370,16 +370,17 @@ export interface ApplicationInput {
   answers?: { question_id: string; answer_text: string }[];
 }
 
-export async function insertComplexApplication(projectId: string, studentId: string, input: ApplicationInput) {
+/** `teamId` makes this the application of a team; the database only accepts it from the team's leader. */
+export async function insertComplexApplication(projectId: string, studentId: string, input: ApplicationInput, teamId?: string) {
   const sql = database();
   const id = randomUUID();
   const queries = [];
 
   queries.push(
-    sql`INSERT INTO skillbridge.applications (id, project_id, student_id, cover_note, resume_id, pitch, availability_hours, available_from)
+    sql`INSERT INTO skillbridge.applications (id, project_id, student_id, cover_note, resume_id, pitch, availability_hours, available_from, team_id)
       SELECT ${id}, ${projectId}, ${studentId}, ${input.cover_note},
         (SELECT r.id FROM skillbridge.resumes r WHERE r.student_id = ${studentId} ORDER BY r.created_at DESC, r.id DESC LIMIT 1),
-        ${input.pitch ?? null}, ${input.availability_hours ?? null}, ${input.available_from ?? null}
+        ${input.pitch ?? null}, ${input.availability_hours ?? null}, ${input.available_from ?? null}, ${teamId ?? null}::uuid
       WHERE EXISTS (SELECT 1 FROM skillbridge.projects WHERE id = ${projectId} AND status = 'published')`
   );
 

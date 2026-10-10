@@ -25,6 +25,7 @@
     "db:check": "tsx --conditions react-server scripts/check-neon.ts",
     "test:backend": "node scripts/test-backend.mjs",
     "test:teams": "node scripts/test-teams.mjs",
+    "test:teams:repo": "node scripts/test-teams-repo.mjs",
     "test:integration": "node scripts/test-integration.mjs",
     "test:db": "node scripts/test-database.mjs",
     "test:smoke": "node scripts/smoke.mjs",
