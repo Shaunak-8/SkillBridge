@@ -3,34 +3,63 @@
 @tailwind utilities;
 
 :root { 
-  --ink: #172033;
-  --charcoal: #181a20;
-  --warm-bg: #faf8f5;
+  --cream: #F7F0D2;
+  --near-black: #151515;
+  --hot-pink: #D83D63;
+  --gold: #F2BE4E;
+  --border: #111111;
+  --muted: #655F52;
 }
+
 * { box-sizing: border-box; }
+
 body { 
   margin: 0; 
-  background: #f7f9fc; 
-  color: var(--ink); 
+  background-color: var(--cream);
+  background-image: 
+    linear-gradient(to right, rgba(17, 17, 17, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.045) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--near-black); 
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
 button, input, textarea, select { font: inherit; }
-::selection { background: #fde68a; color: #181a20; }
+::selection { background: var(--gold); color: var(--near-black); }
 
 .business-workspace { overflow-wrap: anywhere; }
 .business-workspace :is(button, a, input, textarea, select):focus-visible,
-nav[aria-label*="business"] a:focus-visible { outline: 2px solid #4842d0; outline-offset: 3px; }
-nav[aria-label="Business navigation"] a:focus-visible { outline: 2px solid #4842d0; outline-offset: 3px; }
+nav[aria-label*="business"] a:focus-visible { outline: 2px solid #111111; outline-offset: 3px; }
+nav[aria-label="Business navigation"] a:focus-visible { outline: 2px solid #111111; outline-offset: 3px; }
 .business-workspace button { min-height: 44px; }
+
 @media (prefers-reduced-motion: reduce) {
   .business-workspace * { transition: none !important; animation: none !important; }
   .business-workspace button:hover { transform: none; }
 }
+
 @layer utilities {
   .text-balance { text-wrap: balance; }
+  
+  .bg-cream-grid {
+    background-color: #F7F0D2;
+    background-image: 
+      linear-gradient(to right, rgba(17, 17, 17, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(17, 17, 17, 0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .neo-btn {
+    transition: all 0.1s ease;
+  }
+  .neo-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #111111 !important;
+  }
+
   .btn-press:active {
-    transform: translate(1.5px, 1.5px);
-    box-shadow: 0px 0px 0px #181a20 !important;
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 #111111 !important;
   }
 }

@@ -28,6 +28,22 @@ describe('Input and redirect security', () => {
   it('uses only fixed dashboard paths', () => { expect(dashboardPath('admin')).toBe('/admin/dashboard'); expect(dashboardPath('//evil.test')).toBe('/onboarding'); });
 });
 describe('Server-side role protection', () => {
+  it('recovers from a transient session error', async () => {
+    mocks.session.mockResolvedValueOnce({ error: { status: 502 } });
+    mocks.sql.mockResolvedValue([{ role: 'student', onboarding_completed: true }]);
+    expect((await requireRole('student')).profile.role).toBe('student');
+    expect(mocks.session).toHaveBeenCalledTimes(2);
+  });
+  it('does not redirect a signed-in user to login during an auth outage', async () => {
+    mocks.session.mockResolvedValue({ error: { status: 503 } });
+    await expect(requireRole('student')).rejects.toThrow('temporarily unavailable');
+    expect(mocks.redirect).not.toHaveBeenCalled();
+    expect(mocks.sql).not.toHaveBeenCalled();
+  });
+  it('returns a retryable API error during an auth outage', async () => {
+    mocks.session.mockResolvedValue({ error: { status: 503 } });
+    expect((await GET()).status).toBe(503);
+  });
   it('rejects anonymous page access', async () => { mocks.session.mockResolvedValue({ data: null }); await expect(requireRole('admin')).rejects.toThrow('REDIRECT:/login'); });
   it('blocks unverified email', async () => { mocks.session.mockResolvedValue({ data: { user: { id: 'auth-1', emailVerified: false } } }); await expect(requireRole('student')).rejects.toThrow('REDIRECT:/verify-email'); });
   it('requires onboarding', async () => { await expect(requireRole('student')).rejects.toThrow('REDIRECT:/onboarding'); });

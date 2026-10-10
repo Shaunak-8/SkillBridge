@@ -1,18 +1,112 @@
+'use client';
+
 import Link from "next/link";
-import { ArrowUpRight, MapPin, Users } from "lucide-react";
+import { ArrowUpRight, Clock, MapPin, Users } from "lucide-react";
 import type { Project } from "@/types";
-import { Badge, Card } from "@/components/ui";
+import { Badge } from "@/components/ui";
+import { useLanguage } from "@/lib/i18n/context";
 
 export function ProjectStatusBadge({ status }: { status: Project["status"] }) {
-  const labels = { published: "Open", in_progress: "In progress", completed: "Completed", draft: "Draft", closed: "Closed", cancelled: "Cancelled" };
-  return <Badge tone={status === "published" ? "green" : status === "in_progress" ? "purple" : "default"}>{labels[status]}</Badge>;
+  const { t } = useLanguage();
+  const labels: Record<string, string> = {
+    published: t('open') !== 'open' ? t('open') : 'Open',
+    in_progress: t('in_progress') !== 'in_progress' ? t('in_progress') : 'In progress',
+    completed: t('completed') !== 'completed' ? t('completed') : 'Completed',
+    draft: t('draft') !== 'draft' ? t('draft') : 'Draft',
+    closed: t('closed') !== 'closed' ? t('closed') : 'Closed',
+    cancelled: 'Cancelled',
+  };
+  const tone =
+    status === "published"
+      ? "green"
+      : status === "in_progress"
+      ? "gold"
+      : status === "draft"
+      ? "pink"
+      : "default";
+
+  return <Badge tone={tone}>{labels[status] || status}</Badge>;
 }
-export function SkillBadge({ name, type = "technical" }: { name: string; type?: string }) { return <Badge tone={type === "technical" ? "blue" : type === "creative" ? "amber" : "purple"}>{name}</Badge>; }
+
+export function SkillBadge({ name }: { name: string; type?: string }) {
+  return (
+    <span className="inline-flex items-center rounded-md border-[1.5px] border-[#111111] bg-[#F7F0D2] px-2 py-0.5 text-[11px] font-bold text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
+      {name}
+    </span>
+  );
+}
+
 export function ProjectCard({ project }: { project: Project }) {
-  return <Card className="group flex h-full flex-col p-5">
-    <div className="mb-4 flex items-start justify-between gap-3"><Badge tone="default">{project.category}</Badge><ProjectStatusBadge status={project.status} /></div>
-    <h3 className="text-lg font-bold leading-snug group-hover:text-brand">{project.title}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">{project.summary}</p>
-    <div className="mt-4 flex flex-wrap gap-2">{project.requirements.slice(0, 3).map((r) => <SkillBadge key={r.id} name={r.skill.name} type={r.skill.type} />)}</div>
-    <div className="mt-auto border-t border-line pt-4"><div className="flex items-center justify-between text-xs text-muted"><span className="flex items-center gap-1"><MapPin size={14} />{project.location}</span><span className="flex items-center gap-1"><Users size={14} />{project.mode === "team" ? "Team" : "Solo"}</span></div><Link href={project.status === "draft" ? `/business/projects/${project.id}/verify` : `/projects/${project.id}`} className="mt-4 flex items-center justify-between text-sm font-semibold text-brand">{project.status === "draft" ? "Review draft" : "View project"} <ArrowUpRight size={16} /></Link></div>
-  </Card>;
+  const { t } = useLanguage();
+  const targetHref =
+    project.status === "draft"
+      ? `/business/projects/${project.id}/verify`
+      : `/projects/${project.id}`;
+
+  const displayCategory = t(project.category) !== project.category ? t(project.category) : project.category;
+  const displayLocation = project.location
+    ? (t(project.location) !== project.location ? t(project.location) : project.location)
+    : t('remote_friendly');
+
+  return (
+    <div className="group flex h-full flex-col justify-between rounded-xl border-2 border-[#111111] bg-white p-5 shadow-[4px_4px_0_#111111] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#111111]">
+      <div>
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center rounded-md border-[1.5px] border-[#111111] bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
+            {displayCategory}
+          </span>
+          <ProjectStatusBadge status={project.status} />
+        </div>
+
+        {project.businessName && (
+          <p className="text-xs font-bold text-[#D83D63] uppercase tracking-wide">
+            {t(project.businessName) !== project.businessName ? t(project.businessName) : project.businessName}
+          </p>
+        )}
+
+        <h3 className="mt-1 text-base sm:text-lg font-black leading-snug text-[#151515] group-hover:text-[#D83D63] transition-colors">
+          {project.title}
+        </h3>
+
+        <p className="mt-2 line-clamp-2 text-xs sm:text-sm font-medium leading-relaxed text-[#655F52]">
+          {project.summary || project.description}
+        </p>
+
+        {project.requirements && project.requirements.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {project.requirements.slice(0, 3).map((r) => (
+              <SkillBadge key={r.id} name={r.skill.name} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 border-t-2 border-[#111111] pt-3.5">
+        <div className="flex items-center justify-between text-xs font-semibold text-[#655F52]">
+          <span className="flex items-center gap-1">
+            <MapPin size={13} className="text-[#151515]" />
+            {displayLocation}
+          </span>
+          {project.duration && (
+            <span className="flex items-center gap-1">
+              <Clock size={13} className="text-[#151515]" />
+              {t(project.duration) !== project.duration ? t(project.duration) : project.duration}
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <Users size={13} className="text-[#151515]" />
+            {project.mode === "team" ? t('team') : t('solo')}
+          </span>
+        </div>
+
+        <Link
+          href={targetHref}
+          className="mt-3.5 flex items-center justify-between rounded-lg border-2 border-[#111111] bg-[#F7F0D2] px-3 py-2 text-xs font-bold text-[#151515] shadow-[2px_2px_0_#111111] transition-all hover:bg-[#D83D63] hover:text-white active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#111111]"
+        >
+          <span>{project.status === "draft" ? t('draft') : t('view_project_apply')}</span>
+          <ArrowUpRight size={15} />
+        </Link>
+      </div>
+    </div>
+  );
 }

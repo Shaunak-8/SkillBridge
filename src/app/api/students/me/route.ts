@@ -1,4 +1,5 @@
 import { apiError } from '@/lib/api';
+import { embedStudentByProfile, scheduleEmbedding } from '@/lib/ai/embed-records';
 import { getMyProfile, updateMyProfile } from '@/lib/students/service';
 import { readJson, studentIdentity, studentMutationIdentity, validationFailed } from '@/lib/students/http';
 import { validateProfileUpdate } from '@/lib/validation/student';
@@ -15,6 +16,8 @@ export async function PATCH(request: Request) {
     const { profile } = await studentMutationIdentity(request);
     const validation = validateProfileUpdate(await readJson(request));
     if (!validation.valid || !validation.sanitized) return validationFailed(validation.errors);
-    return Response.json({ data: await updateMyProfile(profile.id, validation.sanitized), message: 'Profile updated successfully.' });
+    const data = await updateMyProfile(profile.id, validation.sanitized);
+    scheduleEmbedding(() => embedStudentByProfile(profile.id));
+    return Response.json({ data, message: 'Profile updated successfully.' });
   } catch (error) { return apiError(error); }
 }

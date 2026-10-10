@@ -8,10 +8,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const auth = await guard('business');
     if (auth instanceof Response) return auth;
-    const project = await loadProject(id);
+    // Parallel round trip; the applications are discarded unless the owner check below passes.
+    const [project, result] = await Promise.all([loadProject(id), listProjectApplications(id, pageParams(new URL(request.url)))]);
     if (!project) return fail('Project not found.', 404);
     if (project.ownerProfileId !== auth.profile.id) return fail('You do not own this project.', 403);
-    const result = await listProjectApplications(id, pageParams(new URL(request.url)));
     // Applicants opted in by applying, so rank them regardless of visibility/remote preference.
     const ranked = new Map(recommendStudentsForProject(
       { ...project, status: 'published' },

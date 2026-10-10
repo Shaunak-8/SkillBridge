@@ -2,8 +2,9 @@ import { beforeAll, afterAll, beforeEach, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 vi.mock('server-only', () => ({}));
-const mocks = vi.hoisted(() => ({ sql: vi.fn(), profile: vi.fn(), rate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ sql: vi.fn(), profile: vi.fn(), rate: vi.fn(), embedProject: vi.fn() }));
 vi.mock('@/lib/db', () => ({ database: () => mocks.sql }));
+vi.mock('@/lib/ai/embed-records', () => ({ embedProject: mocks.embedProject, scheduleEmbedding: (task: () => Promise<unknown>) => { void task(); } }));
 vi.mock('@/lib/auth/profile', () => ({ currentProfile: mocks.profile }));
 vi.mock('@/lib/auth/security', async original => ({ ...await original<typeof import('@/lib/auth/security')>(), rateLimit: mocks.rate }));
 import { businessSchema, briefSchema, type BriefInput } from '@/lib/business/contracts';
@@ -88,6 +89,7 @@ it('prevents cross-business read, edit, confirmation and publication', async () 
   expect((await edit(request(`/api/business/projects/${project.id}`, 'PATCH', { ...brief, brief_version: 1 }), context(project.id))).status).toBe(404);
   expect((await confirm(request('', 'POST', { briefVersion: 1 }), context(project.id))).status).toBe(403);
   expect((await setStatus(request('', 'PATCH', { status: 'published', briefVersion: 1 }), context(project.id))).status).toBe(403);
+  expect(mocks.embedProject).not.toHaveBeenCalled();
 });
 it('returns a not-found response for invalid IDs', async () => { expect((await detail(request('', 'GET'), context('invalid'))).status).toBe(404); });
 it('edits draft revisions and rejects stale saves', async () => {
@@ -97,7 +99,7 @@ it('edits draft revisions and rejects stale saves', async () => {
 });
 it('rejects unconfirmed publication even through a direct request', async () => {
   const project = await draft(); expect((await setStatus(request('', 'PATCH', { status: 'published', briefVersion: 1 }), context(project.id))).status).toBe(409);
-  expect((await getProject(owner, project.id)).status).toBe('draft');
+  expect((await getProject(owner, project.id)).status).toBe('draft'); expect(mocks.embedProject).not.toHaveBeenCalled();
 });
 it('rejects incomplete brief confirmation and publication', async () => {
   await saveBusiness(owner, profile); const project = await createDraft(owner, { ...brief, summary: '', deliverables: [] });
@@ -108,6 +110,7 @@ it('confirms and publishes a complete draft, and disallows further draft edits',
   const project = await draft(); const confirmed = await confirmDraft(owner, project.id, { brief_version: 1, answers: [] });
   expect(confirmed.confirmed_version).toBe(1); expect(confirmed.owner_confirmed).toBe(true);
   const published = await publishDraft(owner, project.id, 1); expect(published.status).toBe('published'); expect(published.published_at).toBeTruthy();
+  expect(mocks.embedProject).toHaveBeenCalledTimes(1); expect(mocks.embedProject).toHaveBeenCalledWith(project.id);
   await expect(editDraft(owner, project.id, { ...brief, brief_version: 1 })).rejects.toMatchObject({ status: 409 });
 });
 it('invalidates confirmation on edits and rejects stale confirmation/publication', async () => {

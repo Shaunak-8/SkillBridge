@@ -2,6 +2,7 @@ import "server-only";
 import { projectDraftSchema, ValidatedGenerateInput, ValidatedProjectDraft } from "./schemas";
 import { buildFallbackDraft, buildUserPrompt, SYSTEM_PROMPT } from "./prompt";
 import { retrieveKnowledge } from "./retrieval";
+import { DEFAULT_GEMINI_MODEL } from "./model";
 
 export interface GenerationResult {
   draft: ValidatedProjectDraft;
@@ -49,7 +50,7 @@ export async function generateProjectDraft(
   const isGemini = Boolean(process.env.GEMINI_API_KEY || process.env.LLM_PROVIDER !== "openai");
 
   if (isGemini) {
-    const modelName = process.env.LLM_MODEL || "gemini-2.5-flash-lite";
+    const modelName = process.env.LLM_MODEL || DEFAULT_GEMINI_MODEL;
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
     const controller = new AbortController();
@@ -127,12 +128,12 @@ export async function generateProjectDraft(
           retrievedFrom,
         };
       }
-    } catch (error: any) {
+    } catch (error) {
       clearTimeout(timeoutId);
-      const isTimeout = error.name === "AbortError";
+      const isTimeout = error instanceof Error && error.name === "AbortError";
       const failureReason = isTimeout
         ? `Gemini API request timed out after ${timeoutMs / 1000}s.`
-        : error.message || "Failed to reach Gemini API endpoint.";
+        : error instanceof Error && error.message ? error.message : "Failed to reach Gemini API endpoint.";
 
       console.error("Gemini API Error:", failureReason);
 
@@ -216,12 +217,12 @@ export async function generateProjectDraft(
           retrievedFrom,
         };
       }
-    } catch (error: any) {
+    } catch (error) {
       clearTimeout(timeoutId);
-      const isTimeout = error.name === "AbortError";
+      const isTimeout = error instanceof Error && error.name === "AbortError";
       const failureReason = isTimeout
         ? `OpenAI API request timed out after ${timeoutMs / 1000}s.`
-        : error.message || "Failed to reach OpenAI API endpoint.";
+        : error instanceof Error && error.message ? error.message : "Failed to reach OpenAI API endpoint.";
 
       return {
         draft: buildFallbackDraft(input.rawProblemText, input.category, input.format),

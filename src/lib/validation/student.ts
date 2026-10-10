@@ -232,8 +232,8 @@ export function validateProfileUpdate(input: Partial<StudentProfileUpdateInput>)
       "Evenings",
       "Part-time",
     ];
-    const pref = allowedPrefs.includes(raw.schedulePreference as any)
-      ? (raw.schedulePreference as AvailabilityConfig["schedulePreference"])
+    const pref = raw.schedulePreference && allowedPrefs.includes(raw.schedulePreference)
+      ? raw.schedulePreference
       : "Flexible";
     const notes = typeof raw.notes === "string" ? raw.notes.trim().slice(0, 200) : undefined;
 
