@@ -58,10 +58,49 @@ export async function discoverProjects(f: DiscoverFilters, { page, pageSize }: P
   return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };
 }
 
-export async function loadProject(id: string): Promise<(MatchProject & { ownerProfileId: string }) | null> {
-  const rows = await database()`SELECT id, title, summary, problem_statement, category, required_skills, remote_ok, location_text, status, owner_profile_id FROM skillbridge.projects WHERE id = ${id}`;
-  return rows[0] ? { ...toProject(rows[0]), ownerProfileId: rows[0].owner_profile_id } : null;
+export interface FullProjectDetail extends MatchProject {
+  ownerProfileId: string;
+  deliverables: string[];
+  budgetLabel: string;
+  timeline: string | null;
+  mode: 'individual' | 'team';
+  compensation: string;
+  preferredLanguage: string;
+  createdAt: string;
+  publishedAt: string | null;
+  updatedAt: string;
+  businessName: string | null;
+  businessType: string | null;
+  businessLocation: string | null;
 }
+
+export async function loadProject(id: string): Promise<FullProjectDetail | null> {
+  const rows = await database()`
+    SELECT p.*, bp.business_name, bp.business_type, bp.location AS business_location
+    FROM skillbridge.projects p
+    LEFT JOIN skillbridge.business_profiles bp ON bp.profile_id = p.owner_profile_id
+    WHERE p.id = ${id}
+  `;
+  if (!rows[0]) return null;
+  const r = rows[0];
+  return {
+    ...toProject(r),
+    ownerProfileId: r.owner_profile_id,
+    deliverables: r.deliverables ?? [],
+    budgetLabel: r.budget_label ?? '',
+    timeline: r.timeline ?? null,
+    mode: r.mode ?? 'individual',
+    compensation: r.compensation ?? 'negotiable',
+    preferredLanguage: r.preferred_language ?? 'en',
+    createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+    publishedAt: r.published_at ? new Date(r.published_at).toISOString() : null,
+    updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+    businessName: r.business_name ?? null,
+    businessType: r.business_type ?? null,
+    businessLocation: r.business_location ?? null,
+  };
+}
+
 
 export async function loadPublishedProjects(): Promise<MatchProject[]> {
   const rows = await database()`SELECT id, title, summary, problem_statement, category, required_skills, remote_ok, location_text, status FROM skillbridge.projects WHERE status = 'published'

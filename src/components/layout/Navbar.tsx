@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { NavAuth } from "./NavAuth";
+import { LanguageSelector } from "./LanguageSelector";
 
 export function Navbar() {
   const { data } = authClient.useSession();
@@ -24,6 +25,9 @@ export function Navbar() {
           <Link href="/projects" className="transition hover:text-[#D83D63]">
             Explore projects
           </Link>
+          <Link href="/community" className="transition hover:text-[#D83D63]">
+            Community
+          </Link>
           <Link href="/about" className="transition hover:text-[#D83D63]">
             How it works
           </Link>
@@ -34,7 +38,10 @@ export function Navbar() {
           )}
         </nav>
 
-        <NavAuth />
+        <div className="flex items-center gap-3">
+          <LanguageSelector />
+          <NavAuth />
+        </div>
       </div>
     </header>
   );
