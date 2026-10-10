@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, SectionTitle } from "@/components/ui";
+import { QuizInvites } from "@/components/quiz/student/QuizInvites";
 import { ApplicationStatusScope, LiveApplicationChatLink, LiveStatusActions, LiveStatusBadge } from "@/components/ws5/status-scope";
 import { DbError, EmptyState } from "@/components/ws5/parts";
 import type { ApplicationStatus } from "@/lib/applications/status";
@@ -26,5 +27,5 @@ async function Applications() {
 }
 
 export default function Page() {
-  return <><SectionTitle title="My applications" description="Track every project you have applied to. Businesses make the final decision." /><Applications /></>;
+  return <><SectionTitle title="My applications" description="Track every project you have applied to. Businesses make the final decision." /><QuizInvites /><Applications /></>;
 }

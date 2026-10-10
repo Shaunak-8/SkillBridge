@@ -1,16 +1,20 @@
+'use client';
+
 import Link from "next/link";
 import { ArrowUpRight, Clock, MapPin, Users } from "lucide-react";
 import type { Project } from "@/types";
 import { Badge } from "@/components/ui";
+import { useLanguage } from "@/lib/i18n/context";
 
 export function ProjectStatusBadge({ status }: { status: Project["status"] }) {
+  const { t } = useLanguage();
   const labels: Record<string, string> = {
-    published: "Open",
-    in_progress: "In progress",
-    completed: "Completed",
-    draft: "Draft",
-    closed: "Closed",
-    cancelled: "Cancelled",
+    published: t('open') !== 'open' ? t('open') : 'Open',
+    in_progress: t('in_progress') !== 'in_progress' ? t('in_progress') : 'In progress',
+    completed: t('completed') !== 'completed' ? t('completed') : 'Completed',
+    draft: t('draft') !== 'draft' ? t('draft') : 'Draft',
+    closed: t('closed') !== 'closed' ? t('closed') : 'Closed',
+    cancelled: 'Cancelled',
   };
   const tone =
     status === "published"
@@ -33,24 +37,30 @@ export function SkillBadge({ name }: { name: string; type?: string }) {
 }
 
 export function ProjectCard({ project }: { project: Project }) {
+  const { t } = useLanguage();
   const targetHref =
     project.status === "draft"
       ? `/business/projects/${project.id}/verify`
       : `/projects/${project.id}`;
+
+  const displayCategory = t(project.category) !== project.category ? t(project.category) : project.category;
+  const displayLocation = project.location
+    ? (t(project.location) !== project.location ? t(project.location) : project.location)
+    : t('remote_friendly');
 
   return (
     <div className="group flex h-full flex-col justify-between rounded-xl border-2 border-[#111111] bg-white p-5 shadow-[4px_4px_0_#111111] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#111111]">
       <div>
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center rounded-md border-[1.5px] border-[#111111] bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
-            {project.category}
+            {displayCategory}
           </span>
           <ProjectStatusBadge status={project.status} />
         </div>
 
         {project.businessName && (
           <p className="text-xs font-bold text-[#D83D63] uppercase tracking-wide">
-            {project.businessName}
+            {t(project.businessName) !== project.businessName ? t(project.businessName) : project.businessName}
           </p>
         )}
 
@@ -75,17 +85,17 @@ export function ProjectCard({ project }: { project: Project }) {
         <div className="flex items-center justify-between text-xs font-semibold text-[#655F52]">
           <span className="flex items-center gap-1">
             <MapPin size={13} className="text-[#151515]" />
-            {project.location || "Remote"}
+            {displayLocation}
           </span>
           {project.duration && (
             <span className="flex items-center gap-1">
               <Clock size={13} className="text-[#151515]" />
-              {project.duration}
+              {t(project.duration) !== project.duration ? t(project.duration) : project.duration}
             </span>
           )}
           <span className="flex items-center gap-1">
             <Users size={13} className="text-[#151515]" />
-            {project.mode === "team" ? "Team" : "Solo"}
+            {project.mode === "team" ? t('team') : t('solo')}
           </span>
         </div>
 
@@ -93,7 +103,7 @@ export function ProjectCard({ project }: { project: Project }) {
           href={targetHref}
           className="mt-3.5 flex items-center justify-between rounded-lg border-2 border-[#111111] bg-[#F7F0D2] px-3 py-2 text-xs font-bold text-[#151515] shadow-[2px_2px_0_#111111] transition-all hover:bg-[#D83D63] hover:text-white active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#111111]"
         >
-          <span>{project.status === "draft" ? "Review draft" : "View project & apply"}</span>
+          <span>{project.status === "draft" ? t('draft') : t('view_project_apply')}</span>
           <ArrowUpRight size={15} />
         </Link>
       </div>

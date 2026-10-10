@@ -12,21 +12,23 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { publicChatConfig } from '@/lib/chat/config';
+import { useLanguage } from '@/lib/i18n/context';
 
 const links = [
-  { href: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/student/projects', label: 'Discover Projects', icon: FolderKanban },
-  { href: '/student/applications', label: 'My Applications', icon: ClipboardCheck },
-  { href: '/student/my-projects', label: 'Active Projects', icon: BriefcaseBusiness },
-  { href: '/student/assessments', label: 'Assessments', icon: BarChart3 },
-  { href: '/student/community', label: 'Student Community', icon: MessageSquare },
-  { href: '/student/profile', label: 'My Profile & Portfolio', icon: UserCheck },
+  { href: '/student/dashboard', label: 'nav_overview', icon: LayoutDashboard },
+  { href: '/student/projects', label: 'nav_discover_projects', icon: FolderKanban },
+  { href: '/student/applications', label: 'nav_my_applications', icon: ClipboardCheck },
+  { href: '/student/my-projects', label: 'nav_active_projects', icon: BriefcaseBusiness },
+  { href: '/student/assessments', label: 'nav_assessments', icon: BarChart3 },
+  { href: '/student/community', label: 'community', icon: MessageSquare },
+  { href: '/student/profile', label: 'nav_profile_portfolio', icon: UserCheck },
 ];
 
 export function StudentNav({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const visibleLinks = publicChatConfig()
-    ? [...links, { href: '/student/messages', label: 'Messages', icon: MessageSquare }]
+    ? [...links, { href: '/student/messages', label: 'messages', icon: MessageSquare }]
     : links;
 
   return (
@@ -52,7 +54,7 @@ export function StudentNav({ mobile = false }: { mobile?: boolean }) {
             }`}
           >
             <Icon size={16} strokeWidth={2.2} aria-hidden="true" />
-            <span>{label}</span>
+            <span>{t(label) !== label ? t(label) : 'Messages'}</span>
           </Link>
         );
       })}

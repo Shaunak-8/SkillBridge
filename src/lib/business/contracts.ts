@@ -3,16 +3,17 @@ import { z } from 'zod';
 export const languages = [
   { value: 'en', label: 'English', bcp47: 'en-IN' },
   { value: 'hi', label: 'Hindi (हिंदी)', bcp47: 'hi-IN' },
-  { value: 'es', label: 'Spanish (Español)', bcp47: 'es-ES' },
+  { value: 'te', label: 'Telugu (తెలుగు)', bcp47: 'te-IN' },
   { value: 'mr', label: 'Marathi (मराठी)', bcp47: 'mr-IN' },
   { value: 'ta', label: 'Tamil (தமிழ்)', bcp47: 'ta-IN' },
-  { value: 'te', label: 'Telugu (తెలుగు)', bcp47: 'te-IN' },
+  { value: 'kn', label: 'Kannada (ಕನ್ನಡ)', bcp47: 'kn-IN' },
   { value: 'bn', label: 'Bengali (বাংলা)', bcp47: 'bn-IN' },
+  { value: 'es', label: 'Spanish (Español)', bcp47: 'es-ES' },
 ] as const;
 
 export type SupportedLanguage = (typeof languages)[number]['value'];
 
-export const languageCodes = ['en', 'hi', 'es', 'mr', 'ta', 'te', 'bn'] as const;
+export const languageCodes = ['en', 'hi', 'te', 'mr', 'ta', 'kn', 'bn', 'es'] as const;
 
 export const statuses = ['draft', 'published', 'in_progress', 'completed', 'closed', 'cancelled'] as const;
 const text = (max: number) => z.string().trim().max(max);

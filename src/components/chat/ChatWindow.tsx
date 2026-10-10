@@ -83,12 +83,12 @@ export default function ChatWindow({ initialPeerUid }: { initialPeerUid?: string
       <div className="max-h-48 shrink-0 overflow-y-auto border-b border-line p-3"><p className="mb-2 text-xs font-bold uppercase text-muted">Start a conversation</p>
         {session.people.map(person => <button key={person.uid} className="block w-full truncate rounded-lg p-2 text-left text-sm hover:bg-brand-soft" onClick={() => void open(person.uid)}>{person.name || 'Application contact'}</button>)}
       </div><div className="min-h-0 flex-1"><CometChatConversations hideDeleteConversation hidePinConversation showSearchBar={false} options={() => []}
-        itemView={conversation => {
+        itemView={(conversation: CometChat.Conversation) => {
           const entity = conversation.getConversationWith();
           if (conversation.getConversationType() !== 'user') return null;
           return authorizedEntity(session, (entity as CometChat.User).getUid(), 'user') ? <CometChatConversations.Item conversation={conversation} options={() => []} hideDeleteButton /> : null;
         }}
-        onItemClick={conversation => {
+        onItemClick={(conversation: CometChat.Conversation) => {
           const entity = conversation.getConversationWith();
           if (conversation.getConversationType() === 'user') void open((entity as CometChat.User).getUid());
         }} emptyView={<p className="p-4 text-sm text-muted">{empty}</p>} /></div>

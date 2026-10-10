@@ -81,3 +81,5 @@ android/.idea/navEditor.xml
 android/.idea/assetWizardSettings.xml
 .gradle/
 
+# mediapipe wasm (copied from node_modules by scripts/copy-mediapipe-assets.mjs)
+public/mediapipe/wasm/
