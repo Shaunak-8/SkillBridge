@@ -441,12 +441,17 @@ export async function listStudentApplications(studentId: string, { page, pageSiz
 }
 
 /** Same as `listStudentApplications` but resolves the student row inside the query (saves a round trip). */
+/** Includes applications made by a team the student is an active member of; `is_applicant` is true for their own. */
 export async function listApplicationsForProfile(profileId: string, { page, pageSize }: Page) {
   const rows = await database()`SELECT a.id, a.status, a.cover_note, a.created_at, a.updated_at, p.id AS project_id,
-      p.title AS project_title, p.category AS project_category, p.status AS project_status, count(*) OVER() AS total
+      p.title AS project_title, p.category AS project_category, p.status AS project_status, a.team_id,
+      (sp.profile_id = ${profileId}) AS is_applicant, count(*) OVER() AS total
     FROM skillbridge.applications a JOIN skillbridge.projects p ON p.id = a.project_id
     JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
     WHERE sp.profile_id = ${profileId}
+      OR EXISTS (SELECT 1 FROM skillbridge.team_members tm
+        JOIN skillbridge.student_profiles msp ON msp.id = tm.student_id
+        WHERE tm.team_id = a.team_id AND tm.status = 'active' AND msp.profile_id = ${profileId})
     ORDER BY a.created_at DESC, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
   const items = rows.map((row: Row) => { const item = { ...row }; delete item.total; return item; });
   return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };

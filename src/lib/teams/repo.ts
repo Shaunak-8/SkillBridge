@@ -1,28 +1,13 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { database } from '@/lib/db';
-import { inviteExpiry, type MemberStatus, type TeamRole, type TeamStatus } from './policy';
+import { inviteExpiry } from './policy';
+import type { ApplicationTeam, InvitableStudent, TeamInvite, TeamView } from './types';
+
+export type { ApplicationTeam, InvitableStudent, TeamInvite, TeamMemberView, TeamView } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
-
-export interface TeamMemberView {
-  membershipId: string; studentId: string; name: string; role: TeamRole; status: MemberStatus;
-  expiresAt: string | null; joinedAt: string | null;
-}
-export interface TeamView {
-  id: string; projectId: string; projectTitle: string; name: string; description: string; status: TeamStatus;
-  myRole: TeamRole; members: TeamMemberView[]; applicationId: string | null; applicationStatus: string | null;
-}
-export interface TeamInvite {
-  membershipId: string; teamId: string; teamName: string; projectId: string; projectTitle: string;
-  leaderName: string | null; expiresAt: string;
-}
-export interface InvitableStudent { id: string; name: string; skills: string[] }
-export interface ApplicationTeam {
-  id: string; name: string; status: TeamStatus;
-  members: { name: string; role: TeamRole; status: MemberStatus }[];
-}
 
 const escapeLike = (text: string) => text.replace(/[\\%_]/g, char => `\\${char}`);
 
