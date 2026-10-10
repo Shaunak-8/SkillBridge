@@ -11,11 +11,12 @@ class LocalStorageAdapter implements StorageAdapter {
   private baseDir = join(process.cwd(), 'public', 'uploads');
 
   async uploadFile(file: File, directory: string): Promise<string> {
-    await mkdir(join(this.baseDir, directory), { recursive: true });
+    // Runtime-only upload path: keep Turbopack from tracing the whole project for it.
+    await mkdir(join(/*turbopackIgnore: true*/ this.baseDir, directory), { recursive: true });
     
     const ext = file.name.split('.').pop();
     const fileName = `${randomUUID()}.${ext}`;
-    const filePath = join(this.baseDir, directory, fileName);
+    const filePath = join(/*turbopackIgnore: true*/ this.baseDir, directory, fileName);
     
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
