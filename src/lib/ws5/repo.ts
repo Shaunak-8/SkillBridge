@@ -288,8 +288,16 @@ export async function loadApplicationForStatus(id: string) {
 export async function loadApplicationDetail(id: string) {
   const rows = await database()`
     SELECT a.*, p.title AS project_title, p.owner_profile_id, p.required_skills,
-           sp.id AS student_id, pr.full_name, sp.bio, sp.skills, sp.education_level, sp.study_year, sp.location_text,
-           r.file_url AS resume_url, r.file_name AS resume_name,
+           sp.id AS student_id, pr.full_name, sp.bio, sp.skills, sp.interests, sp.learning_goals,
+           sp.preferred_categories, sp.education_level, sp.study_year, sp.location_text,
+           sp.availability_hours_per_week AS availability_hours,
+           sp.availability AS availability_schedule, sp.availability_notes, sp.visibility,
+           COALESCE(latest_resume.file_url, r.file_url) AS resume_url,
+           COALESCE(latest_resume.file_name, r.file_name) AS resume_name,
+           COALESCE((SELECT json_agg(json_build_object('id', i.id, 'title', i.title, 'description', i.description,
+             'role', i.role, 'skillsUsed', i.skills_used, 'projectUrl', i.project_url, 'mediaUrl', i.media_url)
+             ORDER BY i.created_at DESC, i.id)
+             FROM skillbridge.student_portfolio_items i WHERE i.student_id = sp.id), '[]'::json) AS profile_portfolio,
            COALESCE((SELECT json_agg(json_build_object('id', i.id, 'title', i.title, 'description', i.description, 'skillsUsed', i.skills_used, 'projectUrl', i.project_url))
              FROM skillbridge.application_portfolio_items api JOIN skillbridge.student_portfolio_items i ON i.id = api.portfolio_item_id WHERE api.application_id = a.id), '[]'::json) AS portfolio,
            COALESCE((SELECT json_agg(json_build_object('question_id', aa.question_id, 'answer_text', aa.answer_text, 'question', q.question))
@@ -298,6 +306,10 @@ export async function loadApplicationDetail(id: string) {
     JOIN skillbridge.projects p ON p.id = a.project_id
     JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
     JOIN skillbridge.profiles pr ON pr.id = sp.profile_id
+    LEFT JOIN LATERAL (
+      SELECT file_url, file_name FROM skillbridge.resumes
+      WHERE student_id = sp.id ORDER BY created_at DESC, id DESC LIMIT 1
+    ) latest_resume ON true
     LEFT JOIN skillbridge.resumes r ON r.id = a.resume_id
     WHERE a.id = ${id}`;
   return rows[0] ?? null;

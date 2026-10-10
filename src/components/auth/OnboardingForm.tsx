@@ -27,9 +27,9 @@ export function OnboardingForm({ name }: { name: string }) {
             SkillBridge
           </span>
         </div>
-        <h1 className="text-2xl font-black text-[#151515]">Find your place</h1>
+        <h1 className="text-2xl font-black text-[#151515]">Set up your workspace</h1>
         <p className="mt-1.5 text-xs font-medium text-[#655F52]">
-          Choose how you will collaborate. Your role cannot be changed after setup.
+          Choose how you will collaborate. After this, you can optionally make your profile for better matches.
         </p>
 
         <form onSubmit={submit} className="mt-6 space-y-5">
@@ -83,11 +83,10 @@ export function OnboardingForm({ name }: { name: string }) {
           )}
 
           <Button className="w-full" disabled={busy}>
-            {busy ? 'Saving…' : 'Open my workspace'}
+            {busy ? 'Saving…' : 'Continue to my workspace'}
           </Button>
         </form>
       </Card>
     </main>
   );
 }
-

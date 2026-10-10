@@ -29,6 +29,10 @@ interface ApplicantDetail {
   project_id: string;
   required_skills: string[] | null;
   skills: string[] | null;
+  bio: string | null;
+  interests: string[] | null;
+  learning_goals: string[] | null;
+  preferred_categories: string[] | null;
   full_name: string;
   project_title: string;
   status: string;
@@ -42,6 +46,9 @@ interface ApplicantDetail {
   resume_url: string | null;
   resume_name: string | null;
   availability_hours: number | null;
+  availability_schedule: string | null;
+  availability_notes: string | null;
+  profile_portfolio: ApplicantPortfolioItem[] | null;
 }
 
 export default async function ApplicantDetailPage({ params }: { params: Promise<{ id: string, applicationId: string }> }) {
@@ -91,11 +98,11 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
             </div>
           </Card>
 
-          {app.portfolio && app.portfolio.length > 0 && (
+          {app.profile_portfolio && app.profile_portfolio.length > 0 && (
             <Card className="p-6">
-              <h2 className="text-xl font-black mb-4 flex items-center gap-2"><Briefcase size={20} /> Selected Portfolio</h2>
+              <h2 className="text-xl font-black mb-4 flex items-center gap-2"><Briefcase size={20} /> Full Portfolio</h2>
               <div className="space-y-4">
-                {app.portfolio.map((item) => (
+                {app.profile_portfolio.map((item) => (
                   <div key={item.id} className="rounded-xl border border-line p-4">
                     <h3 className="font-bold">{item.title}</h3>
                     <p className="text-sm text-muted mt-1">{item.description}</p>
@@ -114,6 +121,35 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
               </div>
             </Card>
           )}
+
+          <Card className="p-6">
+            <h2 className="text-xl font-black mb-4">Complete Student Profile</h2>
+            <div className="space-y-5 text-sm">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted mb-2">About</h3>
+                <p className="whitespace-pre-wrap leading-relaxed">{app.bio || "No bio provided."}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-muted mb-2">Interests</h3>
+                  <p>{app.interests?.length ? app.interests.join(", ") : "Not specified"}</p>
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-muted mb-2">Learning goals</h3>
+                  <p>{app.learning_goals?.length ? app.learning_goals.join(", ") : "Not specified"}</p>
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-muted mb-2">Preferred categories</h3>
+                  <p>{app.preferred_categories?.length ? app.preferred_categories.join(", ") : "Not specified"}</p>
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-muted mb-2">Availability</h3>
+                  <p>{app.availability_hours ? `${app.availability_hours} hours/week` : "Not specified"}{app.availability_schedule ? ` · ${app.availability_schedule}` : ""}</p>
+                  {app.availability_notes && <p className="mt-1 text-muted">{app.availability_notes}</p>}
+                </div>
+              </div>
+            </div>
+          </Card>
 
           {app.answers && app.answers.length > 0 && (
             <Card className="p-6">
