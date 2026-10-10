@@ -6,7 +6,8 @@ import { NO_STORE, studentRoute, teamFail } from '@/lib/teams/http';
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const profileId = await studentRoute(request, { ids: [id] });
+    // The team panel polls this every 10 seconds, so the ceiling is generous.
+    const profileId = await studentRoute(request, { ids: [id], limit: { bucket: 'team-view', max: 300 } });
     if (typeof profileId !== 'string') return profileId;
     const team = await loadTeam(profileId, id);
     return team ? Response.json({ team }, { headers: NO_STORE }) : fail('Team not found.', 404);

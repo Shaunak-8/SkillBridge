@@ -12,6 +12,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const body = createTeamSchema.safeParse(await request.json().catch(() => null));
     if (!body.success) return fail('Enter a team name of 2 to 80 characters (description up to 500).', 400);
     const teamId = await createTeam(profileId, id, body.data.name, body.data.description);
-    return Response.json({ team: await loadTeam(profileId, teamId) }, { status: 201, headers: NO_STORE });
+    const team = await loadTeam(profileId, teamId);
+    if (!team) return fail('Your team was created but could not be loaded. Refresh the page.', 500);
+    return Response.json({ team }, { status: 201, headers: NO_STORE });
   } catch (error) { return teamFail(error); }
 }

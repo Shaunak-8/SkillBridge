@@ -248,7 +248,6 @@ BEGIN
     INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (solo_project, s[7], 'Wrong project', team_a);
     RAISE EXCEPTION 'Team application on a different project than the team accepted';
   EXCEPTION WHEN foreign_key_violation THEN NULL; END;
-  INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[7], 'Team application', team_a);
   -- Nobody applies twice: a solo application blocks joining a team, and team members cannot apply solo.
   INSERT INTO skillbridge.applications(project_id, student_id, cover_note) VALUES (team_project, s[4], 'My own application');
   BEGIN
@@ -261,6 +260,24 @@ BEGIN
     INSERT INTO skillbridge.applications(project_id, student_id, cover_note) VALUES (team_project, s[1], 'Solo while on a team');
     RAISE EXCEPTION 'Team member applied on their own';
   EXCEPTION WHEN check_violation OR unique_violation THEN NULL; END;
+
+  -- Applying freezes the roster: pending invitations are dropped and nobody can be invited or re-invited.
+  IF NOT EXISTS (SELECT 1 FROM skillbridge.team_members WHERE team_id = team_a AND status = 'invited' AND expires_at > now()) THEN
+    RAISE EXCEPTION 'Test setup: expected a pending invitation before applying';
+  END IF;
+  INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[7], 'Team application', team_a);
+  IF EXISTS (SELECT 1 FROM skillbridge.team_members WHERE team_id = team_a AND status = 'invited' AND expires_at > now()) THEN
+    RAISE EXCEPTION 'Pending invitations survived the application';
+  END IF;
+  BEGIN
+    UPDATE skillbridge.team_members SET status = 'invited', expires_at = now() + interval '7 days' WHERE team_id = team_a AND student_id = s[5];
+    RAISE EXCEPTION 'Re-invited into a team that has already applied';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, invited_by, expires_at)
+      VALUES (team_a, team_project, s[8], 'member', 'invited', s[7], now() + interval '7 days');
+    RAISE EXCEPTION 'Invited into a team that has already applied';
+  EXCEPTION WHEN check_violation THEN NULL; END;
 
   -- Accepting a team application activates the team and drops pending invitations (the roster is final).
   UPDATE skillbridge.team_members SET status = 'active', joined_at = now(), responded_at = now() WHERE team_id = team_b AND student_id = s[2];

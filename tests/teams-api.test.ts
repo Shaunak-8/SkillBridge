@@ -93,6 +93,13 @@ describe('create team', () => {
     security.rateLimit.mockResolvedValue(false);
     expect((await createTeam(req({ name: 'Pixel Pioneers' }), ctx(ID))).status).toBe(429);
   });
+  it('reports a team that was created but cannot be loaded instead of returning null', async () => {
+    repo.createTeam.mockResolvedValue(OTHER);
+    repo.loadTeam.mockResolvedValue(null);
+    const response = await createTeam(req({ name: 'Pixel Pioneers' }), ctx(ID));
+    expect(response.status).toBe(500);
+    expect((await response.json()).error).toMatch(/Refresh/);
+  });
 });
 
 describe('invite', () => {
@@ -161,6 +168,11 @@ describe('search and view', () => {
     const response = await candidates(new Request('http://x/api?q=as'), ctx(ID));
     expect(await response.json()).toEqual({ students: [{ id: OTHER, name: 'Asha', skills: ['React'] }] });
     expect(repo.searchInvitableStudents).toHaveBeenCalledWith(STU, ID, 'as');
+  });
+  it('rate limits the roster read generously', async () => {
+    security.rateLimit.mockResolvedValue(false);
+    expect((await getTeam(new Request('http://x/api'), ctx(ID))).status).toBe(429);
+    expect(security.rateLimit).toHaveBeenCalledWith('team-view', STU, 300);
   });
   it('hides a team from non-members', async () => {
     repo.loadTeam.mockResolvedValue(null);

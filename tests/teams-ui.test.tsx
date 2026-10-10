@@ -110,10 +110,18 @@ describe('TeamInvites', () => {
 });
 
 describe('ApplyModeTabs', () => {
-  it('offers solo and team and starts on solo', () => {
+  it('offers solo and team as toggle buttons and starts on solo', () => {
     const html = renderToStaticMarkup(<ApplyModeTabs project={project} profile={profile} />);
     expect(html).toContain('Apply solo');
     expect(html).toContain('Apply as a team');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).not.toContain('role="tab"');
+  });
+  it('keeps both panels mounted and hides the inactive one, so a created team survives a tab switch', () => {
+    const html = renderToStaticMarkup(<ApplyModeTabs project={project} profile={profile} />);
     expect(html).toContain('Why are you a good fit');
+    expect(html).toContain('Create your team');
+    expect(html).toMatch(/<div hidden="">[^]*Create your team/);
   });
 });

@@ -118,6 +118,11 @@ BEGIN
     IF team_status NOT IN ('forming', 'active') OR project_status NOT IN ('published', 'in_progress') THEN
       RAISE EXCEPTION 'This team is not open for new members' USING ERRCODE = 'check_violation';
     END IF;
+    -- The business reviews a fixed roster: once the team has a live application nobody joins or is invited.
+    IF EXISTS (SELECT 1 FROM skillbridge.applications a
+               WHERE a.team_id = NEW.team_id AND a.status NOT IN ('declined', 'withdrawn')) THEN
+      RAISE EXCEPTION 'The team has already applied, so its roster is final' USING ERRCODE = 'check_violation';
+    END IF;
     IF TG_OP = 'UPDATE' AND OLD.status = 'invited' AND NEW.status = 'active'
        AND OLD.expires_at IS NOT NULL AND OLD.expires_at <= clock_timestamp() THEN
       RAISE EXCEPTION 'The invitation has expired' USING ERRCODE = 'check_violation';
@@ -312,6 +317,17 @@ END $$;
 DROP TRIGGER IF EXISTS applications_block_member_solo ON skillbridge.applications;
 CREATE TRIGGER applications_block_member_solo BEFORE INSERT ON skillbridge.applications
   FOR EACH ROW WHEN (NEW.team_id IS NULL) EXECUTE FUNCTION skillbridge.applications_block_member_solo();
+
+-- Applying makes the roster final: pending invitations are declined the moment the team applies.
+CREATE OR REPLACE FUNCTION skillbridge.applications_freeze_roster() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  UPDATE skillbridge.team_members SET status = 'declined', responded_at = now()
+    WHERE team_id = NEW.team_id AND status = 'invited';
+  RETURN NULL;
+END $$;
+DROP TRIGGER IF EXISTS applications_freeze_roster ON skillbridge.applications;
+CREATE TRIGGER applications_freeze_roster AFTER INSERT ON skillbridge.applications
+  FOR EACH ROW WHEN (NEW.team_id IS NOT NULL) EXECUTE FUNCTION skillbridge.applications_freeze_roster();
 
 -- The business decision drives the team: acceptance activates it and freezes the roster as the business saw it
 -- (pending invitations are declined); a declined or withdrawn application disbands it and frees every member.

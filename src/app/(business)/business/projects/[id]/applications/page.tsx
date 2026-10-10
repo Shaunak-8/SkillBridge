@@ -44,11 +44,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     {apps.total > 50 && <p className="mb-4 text-sm text-muted">Showing the 50 most recent applications.</p>}
     {apps.items.length === 0 ? <EmptyState>No applications yet.</EmptyState> : <div className="space-y-4">{apps.items.map((a) => {
       const ev = isEligible(project, { ...a.student, visibility: "matching" }) ? recommendStudentsForProject(project, [{ ...a.student, visibility: "matching" }], {}, retriever)[0] : undefined;
+      const team = teams.get(a.id);
       return <ApplicationStatusScope key={a.id} applicationId={a.id} status={a.status as ApplicationStatus} actor="business_owner"><Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-bold">{a.student.displayName}</h3><p className="text-xs text-muted">Applied {new Date(a.createdAt).toLocaleDateString("en-GB")}{a.student.availabilityHoursPerWeek != null && ` · ${a.student.availabilityHoursPerWeek} hrs/week`}</p></div><LiveStatusBadge /></div>
         <p className="mt-3 whitespace-pre-line text-sm leading-6">{a.coverNote}</p>
         {a.student.skills.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{a.student.skills.map((s) => <SkillBadge key={s} name={s} />)}</div>}
-        {teams.get(a.id) && <div className="mt-4"><p className="mb-2 text-sm font-bold">Team application: {teams.get(a.id)!.name}</p><TeamRoster members={teams.get(a.id)!.members} /></div>}
+        {team && <div className="mt-4"><p className="mb-2 text-sm font-bold">Team application: {team.name}</p><TeamRoster members={team.members} /></div>}
         <WhyMatch reasons={ev?.reasons ?? []} />
         <div className="mt-5 flex gap-2 items-center flex-wrap">
           <Link href={`/business/projects/${id}/applicants/${a.id}`} className="inline-flex h-9 items-center justify-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-dark">View Application</Link>

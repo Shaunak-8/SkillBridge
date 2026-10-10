@@ -17,7 +17,7 @@ async function Applications() {
   let teams: Awaited<ReturnType<typeof teamsForApplications>>;
   try {
     const profileId = (await currentProfile())?.profile?.id;
-    items = profileId ? (await listApplicationsForProfile(profileId, { page: 1, pageSize: 50 })).items : [];
+    items = profileId ? (await listApplicationsForProfile(profileId, { page: 1, pageSize: 50 }, true)).items : [];
     teams = await teamsForApplications(items.filter((a) => a.team_id).map((a) => a.id));
   } catch { return <DbError />; }
     if (!items.length) return <EmptyState>You have not applied to any projects yet. <Link href="/projects" className="font-semibold text-brand">Browse projects</Link></EmptyState>;

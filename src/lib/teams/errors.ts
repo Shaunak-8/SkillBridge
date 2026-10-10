@@ -8,6 +8,7 @@ const BY_MESSAGE: [RegExp, Mapped][] = [
   [/already applied to the project on their own/, { status: 409, message: 'That student has already applied to this project on their own.' }],
   [/You are on a team for this project/, { status: 409, message: 'You are on a team for this project. Apply through your team.' }],
   [/not open for new members/, { status: 409, message: 'This team is no longer open for new members.' }],
+  [/roster is final/, { status: 409, message: 'This team has already applied, so its members can no longer change.' }],
   [/can only be created on a published team project/, { status: 409, message: 'This project does not accept team applications.' }],
   [/team application must come from the team leader/, { status: 403, message: 'Only the team leader can apply for the team.' }],
   [/needs 2 to 5 members to apply/, { status: 409, message: 'Your team needs at least 2 members who accepted before it can apply.' }],
@@ -18,6 +19,7 @@ const BY_CONSTRAINT: Record<string, Mapped> = {
   teams_project_name_idx: { status: 409, message: 'A team with that name already exists for this project. Choose another name.' },
   team_members_one_active_per_project_idx: { status: 409, message: 'This student is already on a team for this project.' },
   applications_team_idx: { status: 409, message: 'Your team has already applied.' },
+  applications_team_project_fkey: { status: 404, message: 'Team not found for this project.' },
 };
 const GENERIC: Mapped = { status: 503, message: 'Something went wrong. Please try again.' };
 

@@ -51,12 +51,13 @@ export function TeamInviteBox({ teamId, projectId, onInvited }: { teamId: string
         className="w-full rounded-xl border-2 border-[#111111] bg-white px-3.5 py-2.5 text-sm font-medium outline-none focus:bg-[#F7F0D2]/20"
       />
       {message && <p role={message.ok ? 'status' : 'alert'} className={`mt-2 text-xs font-bold ${message.ok ? 'text-emerald-700' : 'text-[#D83D63]'}`}>{message.text}</p>}
+      <p aria-live="polite" className="sr-only">{searching ? `${visibleResults.length} students found` : ''}</p>
       {visibleResults.length > 0 && (
         <ul className="mt-3 space-y-2">
           {visibleResults.map(student => (
             <li key={student.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-[#111111] px-3 py-2">
               <span className="text-sm"><strong>{student.name}</strong>{student.skills.length > 0 && <span className="text-[#655F52]"> · {student.skills.join(', ')}</span>}</span>
-              <Button type="button" variant="secondary" disabled={busyId === student.id} onClick={() => invite(student)}>
+              <Button type="button" variant="secondary" aria-label={`Invite ${student.name}`} disabled={busyId !== null} onClick={() => invite(student)}>
                 {busyId === student.id ? 'Inviting…' : 'Invite'}
               </Button>
             </li>

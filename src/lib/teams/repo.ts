@@ -10,6 +10,8 @@ export type { ApplicationTeam, InvitableStudent, TeamInvite, TeamMemberView, Tea
 type Row = Record<string, any>;
 
 const escapeLike = (text: string) => text.replace(/[\\%_]/g, char => `\\${char}`);
+/** Unanswered invitations one leader may have outstanding across all teams (stops invite spam). */
+const MAX_OPEN_INVITES = 10;
 
 /** The viewer's own team (they must be an active member) by team id, or their open team for a project. */
 async function fetchTeamView(profileId: string, where: { teamId?: string; projectId?: string }): Promise<TeamView | null> {
@@ -18,7 +20,7 @@ async function fetchTeamView(profileId: string, where: { teamId?: string; projec
   if (!teamId && !projectId) return null;
   const rows = await database()`SELECT t.id, t.project_id, p.title AS project_title, t.name, t.description, t.status,
       me.role AS my_role, app.id AS application_id, app.status AS application_status,
-      COALESCE((SELECT json_agg(json_build_object('membershipId', m.id, 'studentId', m.student_id, 'name', pr.full_name,
+      COALESCE((SELECT json_agg(json_build_object('membershipId', m.id, 'studentId', m.student_id, 'name', COALESCE(pr.full_name, 'Student'),
           'role', m.role, 'status', m.status, 'expiresAt', m.expires_at, 'joinedAt', m.joined_at)
           ORDER BY (m.role = 'leader') DESC, m.status, m.joined_at NULLS LAST, m.created_at)
         FROM skillbridge.team_members m
@@ -69,17 +71,22 @@ export async function inviteStudent(profileId: string, teamId: string, inviteeSt
     JOIN skillbridge.team_members lead ON lead.team_id = t.id AND lead.role = 'leader' AND lead.status = 'active'
     JOIN skillbridge.student_profiles lsp ON lsp.id = lead.student_id AND lsp.profile_id = ${profileId}
     JOIN skillbridge.student_profiles inv ON inv.id = ${inviteeStudentId}::uuid AND inv.id <> lead.student_id
+      AND inv.visibility IN ('public', 'matching')
     JOIN skillbridge.profiles ipr ON ipr.id = inv.profile_id AND ipr.role = 'student' AND ipr.onboarding_completed
     WHERE t.id = ${teamId}::uuid AND t.status IN ('forming', 'active')
+      AND NOT EXISTS (SELECT 1 FROM skillbridge.applications ta WHERE ta.team_id = t.id)
       AND NOT EXISTS (SELECT 1 FROM skillbridge.team_members o
         WHERE o.project_id = t.project_id AND o.student_id = inv.id AND o.status = 'active')
       AND NOT EXISTS (SELECT 1 FROM skillbridge.applications a
         WHERE a.project_id = t.project_id AND a.student_id = inv.id AND a.team_id IS NULL
           AND a.status NOT IN ('declined', 'withdrawn'))
+      AND (SELECT count(*) FROM skillbridge.team_members x
+        WHERE x.invited_by = lead.student_id AND x.status = 'invited' AND x.expires_at > now()) < ${MAX_OPEN_INVITES}
     ON CONFLICT (team_id, student_id) DO UPDATE
       SET status = 'invited', invited_by = EXCLUDED.invited_by, invited_at = now(), expires_at = EXCLUDED.expires_at,
           responded_at = NULL, joined_at = NULL, left_at = NULL
-      WHERE team_members.status IN ('declined', 'left', 'removed')
+      WHERE (team_members.status IN ('declined', 'left', 'removed')
+             AND COALESCE(team_members.responded_at, team_members.left_at, 'epoch'::timestamptz) < now() - interval '1 day')
          OR (team_members.status = 'invited' AND team_members.expires_at <= now())
     RETURNING id`;
   return rows[0]?.id ?? null;
@@ -119,7 +126,7 @@ export async function listMyInvites(profileId: string): Promise<TeamInvite[]> {
     JOIN skillbridge.teams t ON t.id = m.team_id
     JOIN skillbridge.projects p ON p.id = t.project_id
     WHERE m.status = 'invited' AND m.expires_at > now() AND t.status IN ('forming', 'active')
-      AND p.status IN ('published', 'in_progress')
+      AND p.status = 'published'
     ORDER BY m.invited_at DESC LIMIT 20`;
   return rows.map((r: Row) => ({
     membershipId: r.id, teamId: r.team_id, teamName: r.name, projectId: r.project_id, projectTitle: r.project_title,
@@ -128,18 +135,25 @@ export async function listMyInvites(profileId: string): Promise<TeamInvite[]> {
 }
 
 /**
- * Teammate search for the invite box: students who opted in (visibility public or matching) and really signed up,
- * excluding the requester and anyone who is already on a team or applied on their own for this project.
- * Returns only a name and a few skills.
+ * Teammate search for the invite box. Only a team leader (of a forming or active team on this project) gets
+ * results, so the opted-in student list cannot be browsed from nowhere. Students who opted in (visibility public
+ * or matching) and really signed up, excluding the requester, anyone on a team or with their own application for
+ * this project, and anyone already holding an open invitation from this team. Returns a name and a few skills.
  */
 export async function searchInvitableStudents(profileId: string, projectId: string, q: string): Promise<InvitableStudent[]> {
   const pattern = `%${escapeLike(q)}%`;
-  const rows = await database()`SELECT sp.id, pr.full_name, sp.skills
+  const rows = await database()`SELECT sp.id, COALESCE(pr.full_name, 'Student') AS full_name, sp.skills
     FROM skillbridge.student_profiles sp
     JOIN skillbridge.profiles pr ON pr.id = sp.profile_id
     WHERE sp.visibility IN ('public', 'matching') AND pr.role = 'student' AND pr.onboarding_completed AND pr.id <> ${profileId}
       AND EXISTS (SELECT 1 FROM neon_auth."user" u WHERE u.id::text = pr.auth_user_id)
       AND pr.full_name ILIKE ${pattern}
+      AND EXISTS (SELECT 1 FROM skillbridge.team_members lead
+        JOIN skillbridge.student_profiles lsp ON lsp.id = lead.student_id AND lsp.profile_id = ${profileId}
+        JOIN skillbridge.teams t ON t.id = lead.team_id AND t.project_id = ${projectId}::uuid AND t.status IN ('forming', 'active')
+        WHERE lead.role = 'leader' AND lead.status = 'active'
+          AND NOT EXISTS (SELECT 1 FROM skillbridge.team_members pending
+            WHERE pending.team_id = t.id AND pending.student_id = sp.id AND pending.status = 'invited' AND pending.expires_at > now()))
       AND NOT EXISTS (SELECT 1 FROM skillbridge.team_members o
         WHERE o.project_id = ${projectId}::uuid AND o.student_id = sp.id AND o.status = 'active')
       AND NOT EXISTS (SELECT 1 FROM skillbridge.applications a
@@ -149,16 +163,20 @@ export async function searchInvitableStudents(profileId: string, projectId: stri
   return rows.map((r: Row) => ({ id: r.id, name: r.full_name?.trim() || 'Student', skills: (r.skills ?? []).slice(0, 4) }));
 }
 
-/** Team and roster (active members and unexpired invitations) for a set of applications, keyed by application id. */
+/**
+ * Team and roster for a set of applications, keyed by application id. Only members who accepted are listed: a team
+ * that has applied has a final roster (pending invitations are declined at that moment), so an invited student is
+ * never shown to the business before they consent.
+ */
 export async function teamsForApplications(applicationIds: string[]): Promise<Map<string, ApplicationTeam>> {
   if (!applicationIds.length) return new Map();
   const rows = await database()`SELECT a.id AS application_id, t.id, t.name, t.status,
-      COALESCE(json_agg(json_build_object('name', pr.full_name, 'role', m.role, 'status', m.status)
+      COALESCE(json_agg(json_build_object('name', COALESCE(pr.full_name, 'Student'), 'role', m.role, 'status', m.status)
         ORDER BY (m.role = 'leader') DESC, m.status, m.joined_at NULLS LAST, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::json) AS members
     FROM skillbridge.applications a
     JOIN skillbridge.teams t ON t.id = a.team_id
     LEFT JOIN skillbridge.team_members m ON m.team_id = t.id
-      AND (m.status = 'active' OR (m.status = 'invited' AND m.expires_at > now()))
+      AND m.status = 'active'
     LEFT JOIN skillbridge.student_profiles sp ON sp.id = m.student_id
     LEFT JOIN skillbridge.profiles pr ON pr.id = sp.profile_id
     WHERE a.id = ANY(${applicationIds}::uuid[])

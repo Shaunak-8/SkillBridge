@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { Badge, Button } from '@/components/ui';
 import { ApplyFormComplex } from '@/components/student/ApplyFormComplex';
@@ -51,12 +51,21 @@ function CreateTeamForm({ projectId, onCreated }: { projectId: string; onCreated
 export function TeamApplyPanel({ project, profile, initialTeam }: Props) {
   const [team, setTeam] = useState(initialTeam);
   const [notice, setNotice] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const latestRefresh = useRef(0);
   const teamId = team?.id;
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
+    const mine = ++latestRefresh.current;
     const result = await teamRequest<{ team: TeamView }>(`/api/teams/${teamId}`);
+    if (mine !== latestRefresh.current) return; // a newer refresh superseded this one
     if (result.ok) setTeam(result.data.team);
+    else if (result.status === 404) {
+      // The team was disbanded (its application was declined or withdrawn) or this student is no longer on it.
+      setTeam(null);
+      setNotice('This team is no longer active. You can create a new team or apply on your own.');
+    }
   }, [teamId]);
 
   useEffect(() => {
@@ -67,12 +76,21 @@ export function TeamApplyPanel({ project, profile, initialTeam }: Props) {
 
   async function cancelInvite(membershipId: string) {
     if (!team) return;
+    setCancellingId(membershipId);
     const result = await teamRequest(`/api/teams/${team.id}/invites/${membershipId}`, { method: 'DELETE' });
+    setCancellingId(null);
     setNotice(result.ok ? null : result.error);
     await refresh();
   }
 
-  if (!team) return <CreateTeamForm projectId={project.id} onCreated={setTeam} />;
+  if (!team) {
+    return (
+      <div className="space-y-4">
+        {notice && <p role="status" className="rounded-xl border-2 border-[#111111] bg-[#F7F0D2] p-3 text-sm font-bold">{notice}</p>}
+        <CreateTeamForm projectId={project.id} onCreated={created => { setNotice(null); setTeam(created); }} />
+      </div>
+    );
+  }
 
   const isLeader = team.myRole === 'leader';
   const activeMembers = team.members.filter(member => member.status === 'active').length;
@@ -87,7 +105,10 @@ export function TeamApplyPanel({ project, profile, initialTeam }: Props) {
         </div>
         {team.description && <p className="mb-3 text-sm text-[#655F52]">{team.description}</p>}
         <TeamRoster members={team.members} renderPendingAction={isLeader && !team.applicationId
-          ? member => <Button type="button" variant="ghost" onClick={() => cancelInvite(member.membershipId)}>Cancel invite</Button> : undefined} />
+          ? member => (
+            <Button type="button" variant="ghost" aria-label={`Cancel invitation to ${member.name}`}
+              disabled={cancellingId === member.membershipId} onClick={() => cancelInvite(member.membershipId)}>Cancel invite</Button>
+          ) : undefined} />
         {notice && <p role="alert" className="mt-2 text-xs font-bold text-[#D83D63]">{notice}</p>}
       </section>
 

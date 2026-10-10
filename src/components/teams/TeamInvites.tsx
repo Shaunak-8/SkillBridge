@@ -17,7 +17,15 @@ export function TeamInvites({ invites }: { invites: TeamInvite[] }) {
     setBusyId(invite.membershipId); setError(null);
     const result = await teamRequest(`/api/team-invites/${invite.membershipId}/respond`, { method: 'POST', body: JSON.stringify({ accept }) });
     setBusyId(null);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) {
+      setError(result.error);
+      // The invitation is gone (expired, cancelled or the team applied): drop it instead of leaving a dead button.
+      if (result.status === 404 || result.status === 410) {
+        setItems(current => current.filter(item => item.membershipId !== invite.membershipId));
+        router.refresh();
+      }
+      return;
+    }
     setItems(current => current.filter(item => item.membershipId !== invite.membershipId));
     if (accept) router.push(`/student/projects/${invite.projectId}/apply`); else router.refresh();
   }
@@ -31,11 +39,13 @@ export function TeamInvites({ invites }: { invites: TeamInvite[] }) {
           <li key={invite.membershipId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-[#111111] bg-white p-3">
             <p className="text-sm">
               <strong>{invite.leaderName ?? 'A student'}</strong> invited you to join <strong>{invite.teamName}</strong> for{' '}
-              <strong>{invite.projectTitle}</strong>. Expires {new Date(invite.expiresAt).toLocaleDateString('en-GB')}.
+              <strong>{invite.projectTitle}</strong>. Expires {new Date(invite.expiresAt).toLocaleDateString('en-GB', { timeZone: 'UTC' })}.
             </p>
             <span className="flex gap-2">
-              <Button type="button" disabled={busyId === invite.membershipId} onClick={() => respond(invite, true)}>Accept</Button>
-              <Button type="button" variant="secondary" disabled={busyId === invite.membershipId} onClick={() => respond(invite, false)}>Decline</Button>
+              <Button type="button" aria-label={`Accept invitation to ${invite.teamName}`} disabled={busyId === invite.membershipId}
+                onClick={() => respond(invite, true)}>Accept</Button>
+              <Button type="button" variant="secondary" aria-label={`Decline invitation to ${invite.teamName}`} disabled={busyId === invite.membershipId}
+                onClick={() => respond(invite, false)}>Decline</Button>
             </span>
           </li>
         ))}

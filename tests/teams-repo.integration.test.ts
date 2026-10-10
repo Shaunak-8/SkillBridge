@@ -59,12 +59,13 @@ describe.skipIf(!RUN)('teams repo against a real database', () => {
     const [owner] = await q(`INSERT INTO skillbridge.profiles(auth_user_id, username, email, role, onboarding_completed, full_name)
       VALUES ($1, $2, 'o@example.invalid', 'business', true, 'Biz Owner') RETURNING id`, [`owner-${suffix}`, `own_${suffix}`]);
     await q(`INSERT INTO skillbridge.business_profiles(profile_id, business_name) VALUES ($1, 'Biz')`, [owner.id]);
-    const names = ['Asha Leader', 'Ben Mate', 'Chitra Third', 'Dev Fourth'];
+    const names = ['Asha Leader', 'Ben Mate', 'Chitra Third', 'Dev Fourth', 'Eve Private'];
     for (const [index, name] of names.entries()) {
       const [profile] = await q(`INSERT INTO skillbridge.profiles(auth_user_id, username, email, role, onboarding_completed, full_name)
         VALUES ($1, $2, 'p@example.invalid', 'student', true, $3) RETURNING id`,
         [realAuthIds[index] ?? `fake-${index}-${suffix}`, `st${index}_${suffix}`, name]);
-      const [student] = await q(`INSERT INTO skillbridge.student_profiles(profile_id, visibility, skills) VALUES ($1, 'public', ARRAY['React','Design']) RETURNING id`, [profile.id]);
+      const [student] = await q(`INSERT INTO skillbridge.student_profiles(profile_id, visibility, skills) VALUES ($1, $2, ARRAY['React','Design']) RETURNING id`,
+        [profile.id, index === 4 ? 'private' : 'public']);
       students.push({ profileId: profile.id, studentId: student.id, name });
     }
     const [created] = await q(`INSERT INTO skillbridge.projects(owner_profile_id, title, summary, problem_statement, deliverables, mode)
@@ -76,7 +77,7 @@ describe.skipIf(!RUN)('teams repo against a real database', () => {
 
   afterAll(async () => { if (RUN) await raw.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`); }, 60_000);
 
-  const [leader, mate, third, fourth] = [0, 1, 2, 3].map(index => ({ get: () => students[index] }));
+  const [leader, mate, third, fourth, eve] = [0, 1, 2, 3, 4].map(index => ({ get: () => students[index] }));
 
   it('creates a team with its leader and finds it as the leader\'s open team', async () => {
     teamId = await createTeam(leader.get().profileId, project, 'Pixel Pioneers', 'We build things');
@@ -95,11 +96,13 @@ describe.skipIf(!RUN)('teams repo against a real database', () => {
     expect(teamErrorResponse(error)).toMatchObject({ status: 409, message: expect.stringContaining('name') });
   });
 
-  it('invites a student once and refuses to invite the leader or a duplicate', async () => {
+  it('invites a student once and refuses to invite the leader, a duplicate or a student who is not open to invites', async () => {
     expect(await inviteStudent(leader.get().profileId, teamId, mate.get().studentId)).toEqual(expect.any(String));
     expect(await inviteStudent(leader.get().profileId, teamId, mate.get().studentId)).toBeNull();
     expect(await inviteStudent(leader.get().profileId, teamId, leader.get().studentId)).toBeNull();
     expect(await inviteStudent(mate.get().profileId, teamId, third.get().studentId)).toBeNull();
+    expect(await inviteStudent(leader.get().profileId, teamId, eve.get().studentId)).toBeNull(); // visibility private
+    expect(await listMyInvites(eve.get().profileId)).toEqual([]);
   });
 
   it('lists the invitation for the invitee only', async () => {
@@ -109,11 +112,13 @@ describe.skipIf(!RUN)('teams repo against a real database', () => {
     expect(await listMyInvites(third.get().profileId)).toEqual([]);
   });
 
-  it('lets only the leader cancel an invitation', async () => {
+  it('lets only the leader cancel, and makes a cancelled invite wait a day before it can be re-sent', async () => {
     const [invite] = await listMyInvites(mate.get().profileId);
     expect(await cancelInvite(mate.get().profileId, teamId, invite.membershipId)).toBe(false);
     expect(await cancelInvite(leader.get().profileId, teamId, invite.membershipId)).toBe(true);
     expect(await listMyInvites(mate.get().profileId)).toEqual([]);
+    expect(await inviteStudent(leader.get().profileId, teamId, mate.get().studentId)).toBeNull();
+    await q(`UPDATE skillbridge.team_members SET responded_at = now() - interval '2 days' WHERE id = $1`, [invite.membershipId]);
     expect(await inviteStudent(leader.get().profileId, teamId, mate.get().studentId)).toEqual(expect.any(String));
   });
 
@@ -132,40 +137,56 @@ describe.skipIf(!RUN)('teams repo against a real database', () => {
     expect(await respondToInvite(mate.get().profileId, invite.membershipId, true)).toBeNull();
   });
 
-  it('keeps searchable students free of the requester and of existing members', async () => {
+  it('gives search results only to a team leader, without the requester, members or already-invited students', async () => {
     if (realAuthIds.length < 4) return;
-    // "e" matches Asha Leader (the requester), Ben Mate (an active member) and Dev Fourth; only the last may appear.
+    // "e" matches Asha Leader (requester), Ben Mate (member), Dev Fourth and Eve Private (not open to invites).
     const found = await searchInvitableStudents(leader.get().profileId, project, 'e');
     expect(found.map(student => student.name)).toEqual(['Dev Fourth']);
     expect(Object.keys(found[0]).sort()).toEqual(['id', 'name', 'skills']);
     expect((await searchInvitableStudents(leader.get().profileId, project, 'th')).map(student => student.name))
       .toEqual(['Chitra Third', 'Dev Fourth']);
     expect(await searchInvitableStudents(leader.get().profileId, project, '%')).toEqual([]);
+    // Not a leader: a teammate, or a student without a team, gets nothing.
+    expect(await searchInvitableStudents(mate.get().profileId, project, 'th')).toEqual([]);
+    expect(await searchInvitableStudents(third.get().profileId, project, 'th')).toEqual([]);
+    // Someone with an open invitation from this team is no longer offered.
+    expect(await inviteStudent(leader.get().profileId, teamId, fourth.get().studentId)).toEqual(expect.any(String));
+    expect((await searchInvitableStudents(leader.get().profileId, project, 'th')).map(student => student.name)).toEqual(['Chitra Third']);
   });
 
-  it('accepts a team application from the leader and rolls the roster into the application', async () => {
+  it('accepts the leader\'s team application, drops pending invitations and freezes the roster', async () => {
     const created = await insertComplexApplication(project, leader.get().studentId, { cover_note: 'We apply', pitch: 'Team pitch' }, teamId);
     expect(created).toMatchObject({ team_id: teamId, student_id: leader.get().studentId });
+    expect(await listMyInvites(fourth.get().profileId)).toEqual([]);
+    expect(await inviteStudent(leader.get().profileId, teamId, third.get().studentId)).toBeNull();
+    expect(await inviteStudent(leader.get().profileId, teamId, fourth.get().studentId)).toBeNull();
     const view = await loadProjectTeam(leader.get().profileId, project);
     expect(view).toMatchObject({ applicationId: created!.id, applicationStatus: 'submitted' });
-    const roster = (await teamsForApplications([created!.id])).get(created!.id);
-    expect(roster).toMatchObject({ id: teamId, name: 'Pixel Pioneers' });
-    expect(roster?.members.map(member => member.role)).toEqual(['leader', 'member']);
+    expect(view?.members.map(member => member.status)).toEqual(['active', 'active']);
     const error = await insertComplexApplication(project, mate.get().studentId, { cover_note: 'x' }).catch(e => e);
     expect(teamErrorResponse(error).status).toBe(409);
   });
 
-  it('returns no team for applications that are not team applications', async () => {
+  it('shows the business the team with accepted members only', async () => {
+    const [{ id }] = await q(`SELECT id FROM skillbridge.applications WHERE team_id = $1`, [teamId]);
+    const roster = (await teamsForApplications([id])).get(id);
+    expect(roster).toMatchObject({ id: teamId, name: 'Pixel Pioneers' });
+    expect(roster?.members.map(member => [member.name, member.role, member.status])).toEqual([
+      ['Asha Leader', 'leader', 'active'], ['Ben Mate', 'member', 'active'],
+    ]);
     expect((await teamsForApplications([])).size).toBe(0);
     expect((await teamsForApplications(['00000000-0000-4000-8000-000000000000'])).size).toBe(0);
   });
 
-  it('activates the team and drops pending invitations when the application is accepted', async () => {
-    expect(await inviteStudent(leader.get().profileId, teamId, fourth.get().studentId)).toEqual(expect.any(String));
+  it('activates the team when the application is accepted', async () => {
     await q(`UPDATE skillbridge.applications SET status = 'accepted' WHERE team_id = $1`, [teamId]);
     const view = await loadTeam(leader.get().profileId, teamId);
     expect(view?.status).toBe('active');
     expect(view?.members.map(member => member.status)).toEqual(['active', 'active']);
-    expect(await listMyInvites(fourth.get().profileId)).toEqual([]);
+  });
+
+  it('maps a team that does not exist for this project to a clean error', async () => {
+    const error = await insertComplexApplication(project, third.get().studentId, { cover_note: 'x' }, '00000000-0000-4000-8000-000000000000').catch(e => e);
+    expect(teamErrorResponse(error).status).not.toBe(503);
   });
 });

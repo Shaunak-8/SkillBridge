@@ -42,6 +42,12 @@ describe('team error mapping', () => {
     const error = Object.assign(new Error('duplicate key'), { code: '23505', constraint: 'team_members_one_active_per_project_idx' });
     expect(teamErrorResponse(error).status).toBe(409);
   });
+  it('explains a frozen roster and an unknown team', () => {
+    expect(teamErrorResponse(new Error('The team has already applied, so its roster is final')))
+      .toEqual({ status: 409, message: expect.stringContaining('already applied') });
+    const error = Object.assign(new Error('violates foreign key'), { code: '23503', constraint: 'applications_team_project_fkey' });
+    expect(teamErrorResponse(error).status).toBe(404);
+  });
   it('hides anything unrecognised', () => {
     const result = teamErrorResponse(new Error('connection to server at 10.0.0.1 failed: password authentication'));
     expect(result).toEqual({ status: 503, message: 'Something went wrong. Please try again.' });
