@@ -2,6 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { ApiFailure } from '@/lib/api';
 import { database } from '@/lib/db';
+import { retryTransient } from '@/lib/db-retry';
 import { eligibleProjects } from './membership';
 import { CHAT_ROLE, CHAT_SYSTEM_UID, chatContacts, chatPermissions, chatUid } from './policy';
 import { chatRest, ChatRestFailure, remoteList, serverChatConfig } from './rest';
@@ -55,7 +56,8 @@ export async function requireChatWorker() {
 /** Serialized, retryable snapshot reconciler. No CometChat request runs in an approval transaction. */
 export async function syncChat(worker = false) {
   serverChatConfig();
-  const sql = database();
+  // Every pass issues hundreds of statements; one dropped connection must not abort it.
+  const sql = retryTransient(database());
   if (!worker) {
     const [state] = await sql`SELECT revision = synced_revision AS current FROM skillbridge.chat_sync_state WHERE singleton`;
     if (state?.current) return;
