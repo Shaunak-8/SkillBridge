@@ -5,6 +5,8 @@ DECLARE
   project uuid;
   question uuid;
   answer_id uuid;
+  embedding_dimensions integer;
+  test_embedding vector;
   suffix text := replace(gen_random_uuid()::text, '-', '');
 BEGIN
   BEGIN
@@ -80,11 +82,17 @@ BEGIN
       RAISE EXCEPTION 'Completed project reopened';
     EXCEPTION WHEN check_violation THEN NULL; END;
     IF abs(('[1,0,0]'::vector <=> '[1,0,0]'::vector)) > 0.000001 THEN RAISE EXCEPTION 'Vector search failed'; END IF;
+    -- Teammates may constrain the shared column (e.g. vector(768)). Keep the
+    -- fixture compatible without altering their schema or real embeddings.
+    SELECT CASE WHEN atttypmod > 0 THEN atttypmod ELSE 3 END INTO embedding_dimensions
+      FROM pg_attribute WHERE attrelid = 'skillbridge.knowledge_chunks'::regclass AND attname = 'embedding';
+    SELECT ('[' || string_agg(CASE WHEN n = 1 THEN '1' ELSE '0' END, ',' ORDER BY n) || ']')::vector
+      INTO test_embedding FROM generate_series(1, embedding_dimensions) n;
     INSERT INTO skillbridge.knowledge_chunks(source_key, chunk_index, content, approved, embedding, embedding_model)
-      VALUES ('test:' || suffix, 0, 'Approved guidance', true, '[1,0,0]', 'test-vector-3'),
-      ('test:' || suffix, 1, 'Private guidance', false, '[1,0,0]', 'test-vector-3');
+      VALUES ('test:' || suffix, 0, 'Approved guidance', true, test_embedding, 'test-vector-fixture'),
+      ('test:' || suffix, 1, 'Private guidance', false, test_embedding, 'test-vector-fixture');
     IF (SELECT count(*) FROM skillbridge.knowledge_chunks WHERE source_key = 'test:' || suffix AND approved
-        AND embedding_model = 'test-vector-3' AND (embedding <=> '[1,0,0]'::vector) < 0.001) <> 1 THEN
+        AND embedding_model = 'test-vector-fixture' AND (embedding <=> test_embedding) < 0.001) <> 1 THEN
       RAISE EXCEPTION 'Approved knowledge vector retrieval failed';
     END IF;
     RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'Rollback test fixtures';

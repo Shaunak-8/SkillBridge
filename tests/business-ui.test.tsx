@@ -19,7 +19,7 @@ it('renders an actionable empty dashboard without fake records', () => {
 });
 it('renders loading and recoverable error states with accessible status roles', () => {
   expect(renderToStaticMarkup(<Loading />)).toContain('role="status"');
-  const html = renderToStaticMarkup(<ErrorPage reset={() => {}} />); expect(html).toContain('role="alert"'); expect(html).toContain('Try again');
+  const html = renderToStaticMarkup(<ErrorPage retry={() => {}} />); expect(html).toContain('role="alert"'); expect(html).toContain('Try again');
 });
 it('associates business profile labels and explains supported languages', () => {
   const html = renderToStaticMarkup(<BusinessProfileForm profile={null} onboarding />);
@@ -27,7 +27,7 @@ it('associates business profile labels and explains supported languages', () => 
 });
 it('preserves a text entry and manual draft route when generation is unavailable', () => {
   const html = renderToStaticMarkup(<ProblemForm business={profile} />);
-  expect(html).toContain('id="problem"'); expect(html).toContain('Generate Project Brief'); expect(html).toContain('Save problem and write a draft'); expect(html).toContain('Voice input is not available yet');
+  expect(html).toContain('id="problem"'); expect(html).toContain('Generate Project Brief'); expect(html).toContain('Save problem and write a draft'); expect(html).toContain('Multilingual Voice');
 });
 it('escapes user content and disables publication of an incomplete unconfirmed draft', () => {
   const html = renderToStaticMarkup(<BriefEditor initial={project} editing />);

@@ -1,4 +1,50 @@
+'use client';
+
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui";
-export function Navbar() { return <header className="border-b border-line bg-white/90 backdrop-blur"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4"><Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight"><span className="grid size-9 place-items-center rounded-xl bg-brand text-white"><Sparkles size={18} /></span>skill<span className="text-brand">bridge</span></Link><nav className="hidden items-center gap-7 text-sm font-medium text-muted md:flex"><Link href="/projects" className="hover:text-ink">Explore projects</Link><Link href="/about" className="hover:text-ink">How it works</Link><Link href="/register" className="hover:text-ink">For businesses</Link></nav><div className="flex items-center gap-2"><Link href="/login" className="hidden sm:block"><Button variant="ghost">Log in</Button></Link><Link href="/register"><Button>Get started <ArrowRight size={15} /></Button></Link></div></div></header>; }
+import { Sparkles } from "lucide-react";
+import { authClient } from "@/lib/auth/client";
+import { NavAuth } from "./NavAuth";
+import { LanguageSelector } from "./LanguageSelector";
+import { useLanguage } from "@/lib/i18n/context";
+
+export function Navbar() {
+  const { data } = authClient.useSession();
+  const { t } = useLanguage();
+
+  return (
+    <header className="border-b-2 border-[#111111] bg-white sticky top-0 z-40">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 sm:px-8">
+        <Link href="/" className="flex items-center gap-2.5 text-lg font-black tracking-tight text-[#151515]">
+          <span className="grid size-9 place-items-center rounded-lg border-2 border-[#111111] bg-[#D83D63] text-white shadow-[2px_2px_0_#111111]">
+            <Sparkles size={18} strokeWidth={2.5} />
+          </span>
+          <span className="text-xl font-black">
+            Skill<span className="text-[#D83D63]">Bridge</span>
+          </span>
+        </Link>
+
+        <nav className="hidden items-center gap-7 text-xs sm:text-sm font-bold text-[#151515] md:flex">
+          <Link href="/projects" className="transition hover:text-[#D83D63]">
+            {t('explore_projects')}
+          </Link>
+          <Link href="/community" className="transition hover:text-[#D83D63]">
+            {t('community')}
+          </Link>
+          <Link href="/about" className="transition hover:text-[#D83D63]">
+            {t('how_it_works')}
+          </Link>
+          {!data?.user && (
+            <Link href="/register" className="transition hover:text-[#D83D63]">
+              {t('for_businesses')}
+            </Link>
+          )}
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <LanguageSelector />
+          <NavAuth />
+        </div>
+      </div>
+    </header>
+  );
+}

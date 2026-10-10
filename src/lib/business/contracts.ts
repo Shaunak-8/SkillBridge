@@ -1,21 +1,35 @@
 import { z } from 'zod';
 
-export const languages = [{ value: 'en', label: 'English' }] as const;
+export const languages = [
+  { value: 'en', label: 'English', bcp47: 'en-IN' },
+  { value: 'hi', label: 'Hindi (हिंदी)', bcp47: 'hi-IN' },
+  { value: 'te', label: 'Telugu (తెలుగు)', bcp47: 'te-IN' },
+  { value: 'mr', label: 'Marathi (मराठी)', bcp47: 'mr-IN' },
+  { value: 'ta', label: 'Tamil (தமிழ்)', bcp47: 'ta-IN' },
+  { value: 'kn', label: 'Kannada (ಕನ್ನಡ)', bcp47: 'kn-IN' },
+  { value: 'bn', label: 'Bengali (বাংলা)', bcp47: 'bn-IN' },
+  { value: 'es', label: 'Spanish (Español)', bcp47: 'es-ES' },
+] as const;
+
+export type SupportedLanguage = (typeof languages)[number]['value'];
+
+export const languageCodes = ['en', 'hi', 'te', 'mr', 'ta', 'kn', 'bn', 'es'] as const;
+
 export const statuses = ['draft', 'published', 'in_progress', 'completed', 'closed', 'cancelled'] as const;
 const text = (max: number) => z.string().trim().max(max);
 export const businessSchema = z.object({
   business_name: text(120).min(1, 'Please enter your business name.'),
   business_type: text(100).min(1, 'Please enter your business category.'),
   location: text(200),
-  preferred_language: z.enum(['en']),
+  preferred_language: z.enum(languageCodes).default('en'),
 }).strict();
-export const problemSchema = z.object({ problem: text(4000).min(10, 'Please describe the problem in at least 10 characters.'), preferred_language: z.enum(['en']) }).strict();
+export const problemSchema = z.object({ problem: text(4000).min(10, 'Please describe the problem in at least 10 characters.'), preferred_language: z.enum(languageCodes).default('en') }).strict();
 export const generationSchema = problemSchema.extend({ project_id: z.uuid().optional(), brief_version: z.number().int().positive().optional() }).refine(v => !!v.project_id === !!v.brief_version, 'Project ID and version must be supplied together.');
 const items = z.array(text(500).min(1)).max(20);
 export const briefSchema = z.object({
   title: text(160), summary: text(2000), problem_statement: text(5000).min(1, 'Please describe your problem.'),
   category: text(100), deliverables: items, required_skills: items,
-  budget_label: text(200), timeline: text(200), preferred_language: z.enum(['en']),
+  budget_label: text(200), timeline: text(200), preferred_language: z.enum(languageCodes).default('en'),
   location_text: text(200), remote_ok: z.boolean(), mode: z.enum(['individual', 'team']),
   compensation: z.enum(['unpaid', 'paid', 'negotiable']),
 }).strict();
