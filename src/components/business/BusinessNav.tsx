@@ -14,7 +14,7 @@ export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
     { href: '/business/dashboard', label: t('nav_overview'), icon: LayoutDashboard },
     { href: '/business/projects/new', label: t('nav_create_project'), icon: Sparkles },
     { href: '/business/projects', label: t('nav_my_projects'), icon: FolderKanban },
-    { href: '/community', label: t('community'), icon: MessageSquare },
+    { href: '/business/community', label: t('community'), icon: MessageSquare },
     { href: '/business/screening', label: t('nav_find_students'), icon: Users },
     { href: '/business/profile', label: t('nav_business_profile'), icon: Settings },
   ];

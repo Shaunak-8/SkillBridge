@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -13,25 +13,132 @@ import {
   Store,
   GraduationCap,
   RefreshCw,
+  MessageSquare,
+  Heart,
+  Clock,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { PostComposer } from './PostComposer';
 import { PostCard } from './PostCard';
-import type { CommunityPost } from '@/lib/community/service';
+import type { CommunityPost, CommunityType } from '@/lib/community/service';
+
+interface DiscussionPost {
+  id: string;
+  author_id: string;
+  title: string;
+  body: string;
+  category: string;
+  created_at: Date | string;
+  author_name: string;
+  author_avatar?: string | null;
+  comment_count: number;
+  like_count: number;
+}
 
 interface CommunityFeedProps {
-  initialPosts: CommunityPost[];
+  type?: CommunityType;
+  posts?: DiscussionPost[];
+  initialPosts?: CommunityPost[];
   currentProfileId?: string | null;
   currentUserRole?: string | null;
 }
 
 type FilterTab = 'all' | 'students' | 'businesses' | 'completed_project' | 'achievement' | 'project_update';
 
-export function CommunityFeed({
-  initialPosts,
-  currentProfileId,
-  currentUserRole,
-}: CommunityFeedProps) {
+export function CommunityFeed(props: CommunityFeedProps) {
+  // If role-based discussion community (student or business)
+  if (props.type) {
+    const { type, posts = [] } = props;
+    return (
+      <div className="mx-auto space-y-6 max-w-4xl">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-[#151515] mb-2">
+              {type === 'student' ? 'Student Community' : 'Business Community'}
+            </h1>
+            <p className="text-[#655F52] text-sm font-medium">
+              {type === 'student'
+                ? 'Discuss experiences, projects, and advice with fellow students.'
+                : 'Discuss hiring, projects, and share advice with other businesses.'}
+            </p>
+          </div>
+          <Link
+            href={`/${type}/community/new`}
+            className="btn-press inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border-2 border-[#111111] bg-[#F2BE4E] px-4 py-2 font-black text-[#151515] shadow-[3px_3px_0_#111111] transition-all hover:bg-[#e0ab3b]"
+          >
+            New Post
+          </Link>
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="rounded-2xl border-2 border-[#111111] bg-white p-8 text-center shadow-[4px_4px_0_#111111]">
+            <MessageSquare className="mx-auto mb-4 h-12 w-12 text-[#999]" />
+            <h3 className="text-xl font-black mb-2 text-[#151515]">No posts yet</h3>
+            <p className="text-[#655F52] text-sm mb-6">
+              Be the first to start a discussion in the {type} community.
+            </p>
+            <Link
+              href={`/${type}/community/new`}
+              className="inline-flex font-black text-[#D83D63] hover:underline"
+            >
+              Create the first post →
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {posts.map((post) => (
+              <Link
+                key={post.id}
+                href={`/${type}/community/${post.id}`}
+                className="block rounded-2xl border-2 border-[#111111] bg-white p-6 shadow-[4px_4px_0_#111111] transition-transform hover:-translate-y-1 hover:shadow-[6px_6px_0_#111111]"
+              >
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <h3 className="text-xl font-black text-[#151515]">{post.title}</h3>
+                  <span className="whitespace-nowrap rounded-md border-2 border-[#111111] bg-[#F7F0D2] px-2.5 py-1 text-xs font-black uppercase tracking-wider text-[#151515]">
+                    {post.category}
+                  </span>
+                </div>
+                <p className="line-clamp-2 text-[#444] text-sm mb-4 leading-relaxed">{post.body}</p>
+
+                <div className="flex flex-wrap items-center gap-6 text-xs font-bold text-[#655F52]">
+                  <div className="flex items-center gap-2">
+                    <div className="size-6 rounded-full bg-gray-200 overflow-hidden border border-[#111111]">
+                      {post.author_avatar ? (
+                        <img src={post.author_avatar} alt={post.author_name} className="size-full object-cover" />
+                      ) : (
+                        <div className="size-full bg-[#D83D63] text-white flex items-center justify-center text-xs font-black">
+                          {post.author_name?.[0]?.toUpperCase() || 'M'}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[#151515] font-black">{post.author_name}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <MessageSquare size={15} />
+                    <span>{post.comment_count}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <Heart size={15} />
+                    <span>{post.like_count}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <Clock size={15} />
+                    <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Public LinkedIn-style feed
+  const { initialPosts = [], currentProfileId, currentUserRole } = props;
   const [posts, setPosts] = useState<CommunityPost[]>(initialPosts);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,144 +204,133 @@ export function CommunityFeed({
             Join the SkillBridge Community
           </h2>
           <p className="mt-1 text-xs text-[#655F52] max-w-md mx-auto">
-            Sign in to share project milestones, celebrate student accomplishments, like, and comment.
+            Sign in to share project deliverables, celebrate milestones, congratulate peers, and connect directly with local business owners.
           </p>
-          <div className="mt-4 flex justify-center gap-3">
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
             <Link
               href="/login"
-              className="btn-press rounded-xl border-2 border-[#111111] bg-white px-4 py-2 text-xs font-black text-[#151515] shadow-[2px_2px_0_#111111] hover:bg-[#F7F0D2] transition"
+              className="btn-press rounded-xl border-2 border-[#111111] bg-[#D83D63] px-5 py-2 text-xs font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#111111] hover:bg-[#c22e53]"
             >
               Sign In
             </Link>
             <Link
               href="/register"
-              className="btn-press rounded-xl border-2 border-[#111111] bg-[#D83D63] px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-[2px_2px_0_#111111] hover:bg-[#c22e53] transition"
+              className="btn-press rounded-xl border-2 border-[#111111] bg-[#F7F0D2] px-5 py-2 text-xs font-black uppercase tracking-wider text-[#151515] shadow-[3px_3px_0_#111111] hover:bg-[#F2BE4E]"
             >
-              Get Started
+              Create Account
             </Link>
           </div>
         </Card>
       )}
 
-      {/* Discovery & Filter Bar */}
+      {/* Filter Navigation & Search Bar */}
       <Card className="p-4 bg-white border-2 border-[#111111] shadow-[4px_4px_0_#111111]">
-        {/* Search */}
-        <form onSubmit={handleSearchSubmit} className="relative">
-          <Search
-            size={16}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#655F52]"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search posts by skill, business, or project keyword..."
-            className="w-full rounded-xl border-2 border-[#111111] bg-[#F7F0D2]/25 pl-10 pr-24 py-2 text-xs sm:text-sm font-bold text-[#151515] outline-none focus:bg-white focus:shadow-[2px_2px_0_#111111] transition"
-          />
-          <button
-            type="submit"
-            className="btn-press absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg border border-[#111111] bg-[#F2BE4E] px-3 py-1 text-xs font-black text-[#151515] shadow-[1px_1px_0_#111111]"
-          >
-            Search
-          </button>
-        </form>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleTabChange('all')}
+              className={`rounded-xl border-2 px-3 py-1.5 text-xs font-black transition-all ${
+                activeTab === 'all'
+                  ? 'border-[#111111] bg-[#111111] text-white shadow-[2px_2px_0_#D83D63]'
+                  : 'border-[#111111] bg-[#F7F0D2] text-[#151515] hover:bg-[#F2BE4E]'
+              }`}
+            >
+              All Updates
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('students')}
+              className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-xs font-black transition-all ${
+                activeTab === 'students'
+                  ? 'border-[#111111] bg-[#D83D63] text-white shadow-[2px_2px_0_#111111]'
+                  : 'border-[#111111] bg-white text-[#151515] hover:bg-[#F7F0D2]'
+              }`}
+            >
+              <GraduationCap size={14} />
+              Students
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('businesses')}
+              className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-xs font-black transition-all ${
+                activeTab === 'businesses'
+                  ? 'border-[#111111] bg-[#F2BE4E] text-[#151515] shadow-[2px_2px_0_#111111]'
+                  : 'border-[#111111] bg-white text-[#151515] hover:bg-[#F7F0D2]'
+              }`}
+            >
+              <Store size={14} />
+              Businesses
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('completed_project')}
+              className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-xs font-black transition-all ${
+                activeTab === 'completed_project'
+                  ? 'border-[#111111] bg-[#7dd3fc] text-[#151515] shadow-[2px_2px_0_#111111]'
+                  : 'border-[#111111] bg-white text-[#151515] hover:bg-[#F7F0D2]'
+              }`}
+            >
+              <CheckCircle2 size={14} />
+              Projects Delivered
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('achievement')}
+              className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-xs font-black transition-all ${
+                activeTab === 'achievement'
+                  ? 'border-[#111111] bg-[#fbcfe8] text-[#151515] shadow-[2px_2px_0_#111111]'
+                  : 'border-[#111111] bg-white text-[#151515] hover:bg-[#F7F0D2]'
+              }`}
+            >
+              <Trophy size={14} />
+              Achievements
+            </button>
+          </div>
 
-        {/* Filter Pills */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#111111]/10">
-          <button
-            type="button"
-            onClick={() => handleTabChange('all')}
-            className={`rounded-lg border-2 px-3 py-1 text-xs font-black transition-all ${
-              activeTab === 'all'
-                ? 'border-[#111111] bg-[#151515] text-white shadow-[2px_2px_0_#111111]'
-                : 'border-transparent text-[#655F52] hover:border-[#111111] hover:bg-[#F7F0D2] hover:text-[#151515]'
-            }`}
-          >
-            All Posts
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('students')}
-            className={`flex items-center gap-1 rounded-lg border-2 px-3 py-1 text-xs font-black transition-all ${
-              activeTab === 'students'
-                ? 'border-[#111111] bg-[#e0e7ff] text-indigo-900 shadow-[2px_2px_0_#111111]'
-                : 'border-transparent text-[#655F52] hover:border-[#111111] hover:bg-[#F7F0D2] hover:text-[#151515]'
-            }`}
-          >
-            <GraduationCap size={13} /> Students
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('businesses')}
-            className={`flex items-center gap-1 rounded-lg border-2 px-3 py-1 text-xs font-black transition-all ${
-              activeTab === 'businesses'
-                ? 'border-[#111111] bg-[#F2BE4E] text-[#151515] shadow-[2px_2px_0_#111111]'
-                : 'border-transparent text-[#655F52] hover:border-[#111111] hover:bg-[#F7F0D2] hover:text-[#151515]'
-            }`}
-          >
-            <Store size={13} /> Businesses
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('completed_project')}
-            className={`flex items-center gap-1 rounded-lg border-2 px-3 py-1 text-xs font-black transition-all ${
-              activeTab === 'completed_project'
-                ? 'border-[#111111] bg-[#dbf5ed] text-emerald-900 shadow-[2px_2px_0_#111111]'
-                : 'border-transparent text-[#655F52] hover:border-[#111111] hover:bg-[#F7F0D2] hover:text-[#151515]'
-            }`}
-          >
-            <CheckCircle2 size={13} /> Completed Projects
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('achievement')}
-            className={`flex items-center gap-1 rounded-lg border-2 px-3 py-1 text-xs font-black transition-all ${
-              activeTab === 'achievement'
-                ? 'border-[#111111] bg-[#F2BE4E] text-[#151515] shadow-[2px_2px_0_#111111]'
-                : 'border-transparent text-[#655F52] hover:border-[#111111] hover:bg-[#F7F0D2] hover:text-[#151515]'
-            }`}
-          >
-            <Trophy size={13} /> Achievements
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('project_update')}
-            className={`flex items-center gap-1 rounded-lg border-2 px-3 py-1 text-xs font-black transition-all ${
-              activeTab === 'project_update'
-                ? 'border-[#111111] bg-[#F7F0D2] text-[#151515] shadow-[2px_2px_0_#111111]'
-                : 'border-transparent text-[#655F52] hover:border-[#111111] hover:bg-[#F7F0D2] hover:text-[#151515]'
-            }`}
-          >
-            <TrendingUp size={13} /> Project Updates
-          </button>
+          {/* Search Form */}
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center min-w-[240px]">
+            <Search size={15} className="absolute left-3 text-[#655F52]" />
+            <input
+              type="text"
+              placeholder="Search posts or skills..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border-2 border-[#111111] bg-[#F7F0D2]/40 py-1.5 pl-9 pr-3 text-xs font-bold text-[#151515] placeholder:text-[#888] focus:border-[#D83D63] focus:bg-white focus:outline-none"
+            />
+          </form>
         </div>
       </Card>
 
-      {/* Feed Stream */}
+      {/* Feed List or Empty State */}
       {isLoading ? (
-        <div className="py-12 text-center">
-          <RefreshCw size={24} className="mx-auto animate-spin text-[#D83D63]" />
-          <p className="mt-2 text-xs font-bold text-[#655F52]">Loading community feed...</p>
+        <div className="flex items-center justify-center py-16">
+          <div className="flex items-center gap-2 rounded-xl border-2 border-[#111111] bg-white px-5 py-3 shadow-[3px_3px_0_#111111]">
+            <RefreshCw size={18} className="animate-spin text-[#D83D63]" />
+            <span className="text-xs font-black text-[#151515]">Updating Feed...</span>
+          </div>
         </div>
       ) : posts.length === 0 ? (
-        <Card className="p-8 text-center bg-white border-2 border-[#111111] shadow-[4px_4px_0_#111111]">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border-2 border-[#111111] bg-[#F7F0D2] shadow-[2px_2px_0_#111111]">
-            <Users size={22} className="text-[#151515]" />
+        <Card className="p-10 bg-white border-2 border-[#111111] shadow-[4px_4px_0_#111111] text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border-2 border-[#111111] bg-[#F7F0D2]">
+            <Users size={22} className="text-[#655F52]" />
           </div>
-          <h3 className="mt-4 text-base font-black text-[#151515]">No posts found</h3>
-          <p className="mt-1 text-xs text-[#655F52] max-w-sm mx-auto">
+          <h3 className="mt-3 text-base font-black text-[#151515]">No Posts Found</h3>
+          <p className="mt-1 text-xs text-[#655F52]">
             {searchQuery
-              ? `No community posts matched "${searchQuery}". Try a different keyword or reset filters.`
-              : 'There are no posts in this category yet. Be the first to share an accomplishment!'}
+              ? `No updates matched "${searchQuery}". Try a different keyword.`
+              : 'Be the first to share an accomplishment or project deliverable!'}
           </p>
-          {(searchQuery || activeTab !== 'all') && (
+          {searchQuery && (
             <Button
+              type="button"
               variant="secondary"
               onClick={() => {
                 setSearchQuery('');
-                handleTabChange('all');
+                fetchFilteredPosts(activeTab, '');
               }}
-              className="mt-4 text-xs font-bold"
+              className="mt-4 border-2 border-[#111111] font-bold text-xs"
             >
               Reset Filters
             </Button>

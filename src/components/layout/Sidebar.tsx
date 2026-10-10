@@ -24,7 +24,7 @@ export function Sidebar({ role }: { role: Role }) {
   const studentLinks = [
     { href: "/student/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
     { href: "/student/projects", label: t('nav_discover_projects'), icon: FolderKanban },
-    { href: "/community", label: t('community'), icon: MessageSquare },
+    { href: "/student/community", label: t('community'), icon: MessageSquare },
     { href: "/student/applications", label: t('nav_my_applications'), icon: ClipboardCheck },
     { href: "/student/my-projects", label: t('nav_active_projects'), icon: BriefcaseBusiness },
     { href: "/student/assessments", label: t('nav_assessments'), icon: BarChart3 },
@@ -41,7 +41,7 @@ export function Sidebar({ role }: { role: Role }) {
       { href: "/business/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
       { href: "/business/projects/new", label: t('nav_create_project'), icon: Sparkles },
       { href: "/business/projects", label: t('nav_my_projects'), icon: FolderKanban },
-      { href: "/community", label: t('community'), icon: MessageSquare },
+      { href: "/business/community", label: t('community'), icon: MessageSquare },
       { href: "/business/screening", label: t('nav_find_students'), icon: Users },
       { href: "/business/profile", label: t('nav_business_profile'), icon: Settings },
     ],

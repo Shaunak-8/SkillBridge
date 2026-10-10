@@ -44,8 +44,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <p className="mt-3 whitespace-pre-line text-sm leading-6">{a.coverNote}</p>
         {a.student.skills.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{a.student.skills.map((s) => <SkillBadge key={s} name={s} />)}</div>}
         <WhyMatch reasons={ev?.reasons ?? []} />
-        <LiveStatusActions />
-        <LiveApplicationChatLink applicationId={a.id} projectActive={['published', 'in_progress', 'completed'].includes(project.status)} />
+        <div className="mt-5 flex gap-2 items-center flex-wrap">
+          <Link href={`/business/projects/${id}/applicants/${a.id}`} className="inline-flex h-9 items-center justify-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-dark">View Application</Link>
+          <LiveStatusActions />
+          <LiveApplicationChatLink applicationId={a.id} projectActive={['published', 'in_progress', 'completed'].includes(project.status)} />
+        </div>
       </Card></ApplicationStatusScope>;
     })}</div>}
     <h2 className="mb-1 mt-12 text-xl font-bold">Suggested candidates</h2>

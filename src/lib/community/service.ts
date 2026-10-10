@@ -1,5 +1,8 @@
 import 'server-only';
 import { database } from '@/lib/db';
+import { requireRole } from '@/lib/auth/profile';
+
+export type CommunityType = 'student' | 'business';
 
 export type PostType =
   | 'completed_project'
@@ -97,18 +100,18 @@ const fallbackPosts: CommunityPost[] = [
     },
     likesCount: 28,
     commentsCount: 5,
-    hasLiked: true,
+    hasLiked: false,
   },
   {
     id: 'post-seed-3',
     authorProfileId: 'author-student-2',
     postType: 'achievement',
-    title: 'Earned AWS Solutions Architect Associate Certification',
+    title: 'Top Rated Contributor badge unlocked this month',
     content:
-      'Thrilled to share that I passed my AWS Solutions Architect exam today! The real-world experience configuring database backups and microservices during my SkillBridge local business engagement gave me practical intuition that went way beyond theory.',
+      'Super excited to have received a 5-star review from Rajkot Auto Spares after building their invoice generator. SkillBridge makes it so easy to work with real Indian businesses right while managing our college schedule.',
     projectId: null,
     mediaUrls: [],
-    skillsHighlighted: ['AWS', 'Cloud Architecture', 'DevOps'],
+    skillsHighlighted: ['TypeScript', 'PDF Generation', 'Node.js'],
     createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
     updatedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
     author: {
@@ -116,45 +119,120 @@ const fallbackPosts: CommunityPost[] = [
       fullName: 'Neha Deshmukh',
       avatarUrl: null,
       role: 'student',
-      headline: 'Cloud & Systems Engineering Student',
+      headline: 'Software Engineering Junior @ VJTI Mumbai',
     },
-    likesCount: 39,
-    commentsCount: 6,
+    likesCount: 42,
+    commentsCount: 7,
+    hasLiked: false,
+  },
+  {
+    id: 'post-seed-4',
+    authorProfileId: 'author-biz-2',
+    postType: 'project_update',
+    title: 'Looking for 2 students to build our Milk Route Optimization app',
+    content:
+      'DesiDairy Coop delivers to 1,200 households daily in Nashik. We are looking for 2 eager engineering students to help us map optimal morning delivery routes using Google Maps & open-source routing algorithms. 3-week project with stipend and direct mentorship.',
+    projectId: null,
+    mediaUrls: [],
+    skillsHighlighted: ['Routing Algorithms', 'Google Maps API', 'React Native'],
+    createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+    author: {
+      id: 'author-biz-2',
+      fullName: 'Ramesh Kulkarni',
+      avatarUrl: null,
+      role: 'business',
+      organizationName: 'DesiDairy Co-operative',
+    },
+    likesCount: 19,
+    commentsCount: 8,
     hasLiked: false,
   },
 ];
 
-const fallbackLikes = new Set<string>(['post-seed-2:user-self']);
+const fallbackLikes = new Set<string>();
 const fallbackComments: CommunityComment[] = [
   {
-    id: 'comment-1',
-    postId: 'post-seed-1',
-    authorProfileId: 'author-biz-1',
-    content: 'Incredible work Aarav! You set an example for how students and local retail can partner together.',
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    author: {
-      id: 'author-biz-1',
-      fullName: 'Kavita Sundaram',
-      avatarUrl: null,
-      role: 'business',
-      organizationName: 'Kavita Handlooms',
-    },
-  },
-  {
-    id: 'comment-2',
+    id: 'comment-seed-1',
     postId: 'post-seed-1',
     authorProfileId: 'author-student-2',
-    content: 'Awesome architecture! Did you use Neon serverless functions or background cron?',
-    createdAt: new Date(Date.now() - 3600000 * 1).toISOString(),
+    content: 'Incredible work Aarav! The WhatsApp alert integration is super practical.',
+    createdAt: new Date(Date.now() - 3600000 * 3).toISOString(),
     author: {
       id: 'author-student-2',
       fullName: 'Neha Deshmukh',
       avatarUrl: null,
       role: 'student',
-      headline: 'Cloud & Systems Engineering Student',
     },
   },
 ];
+
+// Role-based isolation for student & business discussion communities
+async function authorizeCommunityAccess(communityType: CommunityType) {
+  const current = await requireRole(communityType);
+  return current;
+}
+
+export async function getCommunityPosts(communityType: CommunityType, page = 1, limit = 20) {
+  await authorizeCommunityAccess(communityType);
+  const offset = (page - 1) * limit;
+
+  if (process.env.DATABASE_URL) {
+    try {
+      const rows = await database()`
+        SELECT
+          p.id, p.author_id, p.community_type, p.title, p.body, p.category, p.tags, p.created_at, p.updated_at,
+          u.full_name as author_name, u.avatar_url as author_avatar,
+          COALESCE(c.comment_count, 0)::int as comment_count,
+          COALESCE(r.like_count, 0)::int as like_count
+        FROM skillbridge.community_posts p
+        JOIN skillbridge.profiles u ON p.author_id = u.id
+        LEFT JOIN (
+          SELECT post_id, COUNT(*) as comment_count 
+          FROM skillbridge.community_comments 
+          WHERE deleted_at IS NULL 
+          GROUP BY post_id
+        ) c ON p.id = c.post_id
+        LEFT JOIN (
+          SELECT post_id, COUNT(*) as like_count 
+          FROM skillbridge.community_reactions 
+          WHERE reaction_type = 'like' 
+          GROUP BY post_id
+        ) r ON p.id = r.post_id
+        WHERE p.community_type = ${communityType} AND p.deleted_at IS NULL
+        ORDER BY p.created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+      return rows;
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+export async function getCommunityPost(communityType: CommunityType, postId: string) {
+  await authorizeCommunityAccess(communityType);
+
+  if (process.env.DATABASE_URL) {
+    try {
+      const rows = await database()`
+        SELECT
+          p.id, p.author_id, p.community_type, p.title, p.body, p.category, p.tags, p.created_at, p.updated_at,
+          u.full_name as author_name, u.avatar_url as author_avatar
+        FROM skillbridge.community_posts p
+        JOIN skillbridge.profiles u ON p.author_id = u.id
+        WHERE p.id = ${postId} AND p.community_type = ${communityType} AND p.deleted_at IS NULL
+      `;
+      
+      if (rows.length === 0) return null;
+      return rows[0];
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
 
 export interface GetFeedOptions {
   postType?: string | null;
@@ -166,14 +244,14 @@ export interface GetFeedOptions {
 }
 
 export async function getCommunityFeed(options: GetFeedOptions = {}): Promise<CommunityPost[]> {
-  const { postType, role, search, currentProfileId, limit = 30, offset = 0 } = options;
+  const { postType, role, search, currentProfileId, limit = 20, offset = 0 } = options;
 
   if (process.env.DATABASE_URL) {
     try {
       const sql = database();
-      const pattern = search ? `%${search.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
+      const whereConditions = [];
 
-      const rows = await sql`
+      let query = sql`
         SELECT
           p.id,
           p.author_profile_id,
@@ -190,24 +268,44 @@ export async function getCommunityFeed(options: GetFeedOptions = {}): Promise<Co
           pr.role AS author_role,
           bp.business_name,
           sp.bio AS student_headline,
-          proj.title AS project_title,
-          proj.category AS project_category,
-          proj.status AS project_status,
-          COALESCE((SELECT COUNT(*)::int FROM skillbridge.community_post_likes l WHERE l.post_id = p.id), 0) AS likes_count,
-          COALESCE((SELECT COUNT(*)::int FROM skillbridge.community_comments c WHERE c.post_id = p.id), 0) AS comments_count,
-          EXISTS(SELECT 1 FROM skillbridge.community_post_likes l WHERE l.post_id = p.id AND l.profile_id = ${currentProfileId ?? null}::uuid) AS has_liked
+          proj.id AS attached_proj_id,
+          proj.title AS attached_proj_title,
+          proj.category AS attached_proj_category,
+          proj.status AS attached_proj_status,
+          COALESCE(likes.cnt, 0)::int AS likes_count,
+          COALESCE(cmts.cnt, 0)::int AS comments_count,
+          EXISTS(
+            SELECT 1 FROM skillbridge.community_post_likes my_l
+            WHERE my_l.post_id = p.id AND my_l.profile_id = ${currentProfileId ?? null}
+          ) AS has_liked
         FROM skillbridge.community_posts p
         JOIN skillbridge.profiles pr ON pr.id = p.author_profile_id
         LEFT JOIN skillbridge.business_profiles bp ON bp.profile_id = pr.id
         LEFT JOIN skillbridge.student_profiles sp ON sp.profile_id = pr.id
         LEFT JOIN skillbridge.projects proj ON proj.id = p.project_id
-        WHERE (${postType ?? null}::text IS NULL OR p.post_type = ${postType})
-          AND (${role ?? null}::text IS NULL OR pr.role = ${role})
-          AND (${pattern}::text IS NULL OR p.title ILIKE ${pattern} OR p.content ILIKE ${pattern})
-        ORDER BY p.created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
+        LEFT JOIN (
+          SELECT post_id, COUNT(*) AS cnt FROM skillbridge.community_post_likes GROUP BY post_id
+        ) likes ON likes.post_id = p.id
+        LEFT JOIN (
+          SELECT post_id, COUNT(*) AS cnt FROM skillbridge.community_comments GROUP BY post_id
+        ) cmts ON cmts.post_id = p.id
+        WHERE 1=1
       `;
 
+      if (postType && postType !== 'all') {
+        query = sql`${query} AND p.post_type = ${postType}`;
+      }
+      if (role) {
+        query = sql`${query} AND pr.role = ${role}`;
+      }
+      if (search && search.trim()) {
+        const pattern = `%${search.trim()}%`;
+        query = sql`${query} AND (p.title ILIKE ${pattern} OR p.content ILIKE ${pattern})`;
+      }
+
+      query = sql`${query} ORDER BY p.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+
+      const rows = await query;
       return rows.map((r: any) => ({
         id: r.id,
         authorProfileId: r.author_profile_id,
@@ -227,26 +325,26 @@ export async function getCommunityFeed(options: GetFeedOptions = {}): Promise<Co
           headline: r.student_headline,
           organizationName: r.business_name,
         },
-        project: r.project_id
+        project: r.attached_proj_id
           ? {
-              id: r.project_id,
-              title: r.project_title ?? 'Associated Project',
-              category: r.project_category ?? 'General',
-              status: r.project_status ?? 'published',
+              id: r.attached_proj_id,
+              title: r.attached_proj_title,
+              category: r.attached_proj_category,
+              status: r.attached_proj_status,
             }
           : null,
-        likesCount: Number(r.likes_count),
-        commentsCount: Number(r.comments_count),
+        likesCount: Number(r.likes_count || 0),
+        commentsCount: Number(r.comments_count || 0),
         hasLiked: Boolean(r.has_liked),
       }));
     } catch (err) {
-      console.warn('Database query for community feed failed, using fallback:', err);
+      console.warn('Database community feed failed, serving resilient fallback:', err);
     }
   }
 
-  // Fallback filtering
+  // Resilient in-memory fallback
   return fallbackPosts.filter((p) => {
-    if (postType && p.postType !== postType) return false;
+    if (postType && postType !== 'all' && p.postType !== postType) return false;
     if (role && p.author.role !== role) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -266,7 +364,40 @@ export interface CreatePostInput {
   skillsHighlighted?: string[];
 }
 
-export async function createCommunityPost(input: CreatePostInput): Promise<CommunityPost> {
+export async function createCommunityPost(input: CreatePostInput): Promise<CommunityPost>;
+export async function createCommunityPost(
+  communityType: CommunityType,
+  title: string,
+  body: string,
+  category: string,
+  tags?: string[]
+): Promise<string>;
+export async function createCommunityPost(
+  arg1: any,
+  arg2?: any,
+  arg3?: any,
+  arg4?: any,
+  arg5?: any
+): Promise<any> {
+  if (typeof arg1 === 'string' && (arg1 === 'student' || arg1 === 'business')) {
+    const communityType = arg1 as CommunityType;
+    const title = arg2 as string;
+    const body = arg3 as string;
+    const category = arg4 as string;
+    const tags = (arg5 as string[]) || [];
+
+    const current = await authorizeCommunityAccess(communityType);
+    if (process.env.DATABASE_URL) {
+      const rows = await database()`
+        INSERT INTO skillbridge.community_posts (author_id, community_type, title, body, category, tags)
+        VALUES (${current.profile.id}, ${communityType}, ${title}, ${body}, ${category}, ${tags})
+        RETURNING id
+      `;
+      return rows[0].id;
+    }
+    return `post-${Date.now()}`;
+  }
+
   const {
     authorProfileId,
     postType,
@@ -275,7 +406,7 @@ export async function createCommunityPost(input: CreatePostInput): Promise<Commu
     projectId,
     mediaUrls = [],
     skillsHighlighted = [],
-  } = input;
+  } = arg1 as CreatePostInput;
 
   if (!title || title.trim().length < 3) {
     throw new Error('Title must be at least 3 characters long');
@@ -287,7 +418,6 @@ export async function createCommunityPost(input: CreatePostInput): Promise<Commu
   if (process.env.DATABASE_URL) {
     const sql = database();
 
-    // Verify project permission if attached
     if (projectId) {
       const allowed = await sql`
         SELECT 1 FROM skillbridge.projects p
@@ -329,7 +459,6 @@ export async function createCommunityPost(input: CreatePostInput): Promise<Commu
       RETURNING *
     `;
 
-    // Fetch author info
     const [profile] = await sql`
       SELECT pr.*, bp.business_name, sp.bio AS student_headline
       FROM skillbridge.profiles pr
@@ -396,12 +525,33 @@ export async function createCommunityPost(input: CreatePostInput): Promise<Commu
   return newPost;
 }
 
-export async function deleteCommunityPost(postId: string, authorProfileId: string): Promise<boolean> {
+export async function deleteCommunityPost(communityType: CommunityType, postId: string): Promise<boolean>;
+export async function deleteCommunityPost(postId: string, authorProfileId?: string): Promise<boolean>;
+export async function deleteCommunityPost(arg1: string, arg2?: string): Promise<boolean> {
+  if (arg1 === 'student' || arg1 === 'business') {
+    const communityType = arg1 as CommunityType;
+    const postId = arg2 as string;
+    const current = await authorizeCommunityAccess(communityType);
+    if (process.env.DATABASE_URL) {
+      const rows = await database()`
+        UPDATE skillbridge.community_posts
+        SET deleted_at = now()
+        WHERE id = ${postId} AND author_id = ${current.profile.id} AND community_type = ${communityType}
+        RETURNING id
+      `;
+      return rows.length > 0;
+    }
+    return true;
+  }
+
+  const postId = arg1;
+  const authorProfileId = arg2;
+
   if (process.env.DATABASE_URL) {
     const sql = database();
     const result = await sql`
       DELETE FROM skillbridge.community_posts
-      WHERE id = ${postId} AND author_profile_id = ${authorProfileId}
+      WHERE id = ${postId} AND author_profile_id = ${authorProfileId ?? ''}
       RETURNING id
     `;
     return result.length > 0;
@@ -422,7 +572,6 @@ export async function togglePostLike(
   if (process.env.DATABASE_URL) {
     const sql = database();
 
-    // Check if like exists
     const existing = await sql`
       SELECT 1 FROM skillbridge.community_post_likes
       WHERE post_id = ${postId} AND profile_id = ${profileId}
@@ -470,7 +619,32 @@ export async function togglePostLike(
   };
 }
 
-export async function getPostComments(postId: string): Promise<CommunityComment[]> {
+export async function getPostComments(postId: string): Promise<CommunityComment[]>;
+export async function getPostComments(communityType: CommunityType, postId: string): Promise<any[]>;
+export async function getPostComments(arg1: CommunityType | string, arg2?: string): Promise<any> {
+  if (arg1 === 'student' || arg1 === 'business') {
+    const communityType = arg1 as CommunityType;
+    const postId = arg2 as string;
+    await authorizeCommunityAccess(communityType);
+    if (process.env.DATABASE_URL) {
+      const post = await database()`SELECT id FROM skillbridge.community_posts WHERE id = ${postId} AND community_type = ${communityType}`;
+      if (post.length === 0) return [];
+
+      const rows = await database()`
+        SELECT
+          c.id, c.post_id, c.author_id, c.parent_comment_id, c.body, c.created_at,
+          u.full_name as author_name, u.avatar_url as author_avatar
+        FROM skillbridge.community_comments c
+        JOIN skillbridge.profiles u ON c.author_id = u.id
+        WHERE c.post_id = ${postId} AND c.deleted_at IS NULL
+        ORDER BY c.created_at ASC
+      `;
+      return rows;
+    }
+    return [];
+  }
+
+  const postId = arg1 as string;
   if (process.env.DATABASE_URL) {
     const sql = database();
     const rows = await sql`
@@ -511,6 +685,64 @@ export async function getPostComments(postId: string): Promise<CommunityComment[
   }
 
   return fallbackComments.filter((c) => c.postId === postId);
+}
+
+export async function addComment(
+  communityType: CommunityType,
+  postId: string,
+  body: string,
+  parentCommentId: string | null = null
+): Promise<string> {
+  const current = await authorizeCommunityAccess(communityType);
+  if (process.env.DATABASE_URL) {
+    const post = await database()`SELECT id FROM skillbridge.community_posts WHERE id = ${postId} AND community_type = ${communityType}`;
+    if (post.length === 0) throw new Error("Post not found in this community");
+
+    const rows = await database()`
+      INSERT INTO skillbridge.community_comments (post_id, author_id, parent_comment_id, body)
+      VALUES (${postId}, ${current.profile.id}, ${parentCommentId}, ${body})
+      RETURNING id
+    `;
+    return rows[0].id;
+  }
+  return `comment-${Date.now()}`;
+}
+
+export async function deleteComment(communityType: CommunityType, commentId: string): Promise<boolean> {
+  const current = await authorizeCommunityAccess(communityType);
+  if (process.env.DATABASE_URL) {
+    const rows = await database()`
+      UPDATE skillbridge.community_comments c
+      SET deleted_at = now()
+      FROM skillbridge.community_posts p
+      WHERE c.id = ${commentId} 
+        AND c.author_id = ${current.profile.id} 
+        AND c.post_id = p.id 
+        AND p.community_type = ${communityType}
+      RETURNING c.id
+    `;
+    return rows.length > 0;
+  }
+  return true;
+}
+
+export async function toggleReaction(communityType: CommunityType, postId: string): Promise<boolean> {
+  const current = await authorizeCommunityAccess(communityType);
+  if (process.env.DATABASE_URL) {
+    const post = await database()`SELECT id FROM skillbridge.community_posts WHERE id = ${postId} AND community_type = ${communityType}`;
+    if (post.length === 0) throw new Error("Post not found in this community");
+
+    const existing = await database()`SELECT id FROM skillbridge.community_reactions WHERE post_id = ${postId} AND user_id = ${current.profile.id} AND reaction_type = 'like'`;
+    
+    if (existing.length > 0) {
+      await database()`DELETE FROM skillbridge.community_reactions WHERE id = ${existing[0].id}`;
+      return false; // unliked
+    } else {
+      await database()`INSERT INTO skillbridge.community_reactions (post_id, user_id, reaction_type) VALUES (${postId}, ${current.profile.id}, 'like')`;
+      return true; // liked
+    }
+  }
+  return true;
 }
 
 export async function addPostComment(
