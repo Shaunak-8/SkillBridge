@@ -33,7 +33,7 @@ export default async function Page() {
         primaryActionLabel="Post a Problem"
         primaryActionHref="/business/projects/new"
         secondaryActionLabel="Find Students"
-        secondaryActionHref="/business/screening"
+        secondaryActionHref="/business/students"
         badgeText="• Verified Local MSMEs"
       />
 
