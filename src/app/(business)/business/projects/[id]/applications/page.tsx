@@ -3,7 +3,7 @@ import { Badge, Card, SectionTitle } from "@/components/ui";
 import Link from "next/link";
 import { businessPage } from "@/lib/business/pages";
 import { SkillBadge } from "@/components/shared/ProjectCard";
-import { ApplicationStatusScope, LiveStatusActions, LiveStatusBadge } from "@/components/ws5/status-scope";
+import { ApplicationStatusScope, LiveApplicationChatLink, LiveStatusActions, LiveStatusBadge } from "@/components/ws5/status-scope";
 import { DbError, EmptyState, WhyMatch } from "@/components/ws5/parts";
 import { QuizPanel } from "@/components/quiz/business/QuizPanel";
 import type { ApplicationStatus } from "@/lib/applications/status";
@@ -47,6 +47,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         {a.student.skills.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{a.student.skills.map((s) => <SkillBadge key={s} name={s} />)}</div>}
         <WhyMatch reasons={ev?.reasons ?? []} />
         <LiveStatusActions />
+        <LiveApplicationChatLink applicationId={a.id} projectActive={['published', 'in_progress', 'completed'].includes(project.status)} />
       </Card></ApplicationStatusScope>;
     })}</div>}
     <h2 className="mb-1 mt-12 text-xl font-bold">Suggested candidates</h2>

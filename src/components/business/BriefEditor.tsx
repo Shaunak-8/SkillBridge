@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button, Card, Badge } from '@/components/ui';
 import { briefSchema, publicationIssues, type BriefInput, type BusinessProject } from '@/lib/business/contracts';
@@ -17,48 +17,6 @@ function briefOf(project: BusinessProject): BriefInput {
     timeline: project.timeline ?? '', preferred_language: 'en', location_text: project.location_text ?? '',
     remote_ok: project.remote_ok, mode: project.mode, compensation: project.compensation };
 }
-
-const UI_LABELS: Record<string, {
-  cardTitle: string;
-  subTitle: string;
-  chips: string[];
-  placeholder: string;
-  button: string;
-  asking: string;
-}> = {
-  hi: {
-    cardTitle: 'एआई से पूछें और ब्रिफ बदलें',
-    subTitle: 'कोई शब्द समझ नहीं आया? या बदलाव करना चाहते हैं? अपनी भाषा में सवाल पूछें या बोलकर बताएं।',
-    chips: ['तकनीकी शब्दों को समझें', 'आवश्यकताओं को सरल बनाएं', 'बजट या समयसीमा बदलें', 'छात्र कैसे मदद करेंगे?'],
-    placeholder: "सवाल पूछें या बदलाव बताएं (उदा. 'व्हाट्सऐप की जरूरत हटाएं')...",
-    button: 'सवाल पूछें',
-    asking: 'पूछ रहे हैं...',
-  },
-  mr: {
-    cardTitle: 'AI ला विचारा आणि प्रोजेक्ट सुधारणा करा',
-    subTitle: 'काही शब्द समजला नाही? किंवा बदल करायचा आहे? आपल्या मराठी भाषेत विचारा किंवा बोला.',
-    chips: ['तांत्रिक शब्द समजून घ्या', 'गरजा सोप्या करा', 'बजेट किंवा वेळ बदला', 'विद्यार्थी कशी मदत करतील?'],
-    placeholder: "प्रश्न विचारा किंवा बदल सांगा (उदा. 'व्हॉट्सअॅपची गरज काढा')...",
-    button: 'AI ला विचारा',
-    asking: 'विचारत आहे...',
-  },
-  es: {
-    cardTitle: 'Pregunta a IA y Personaliza',
-    subTitle: '¿No entiendes un término? ¿Quieres cambiar algo? Pregunta o habla en tu idioma.',
-    chips: ['Explicar términos técnicos', 'Simplificar requisitos', 'Cambiar presupuesto o plazo', '¿Cómo ayudarán los estudiantes?'],
-    placeholder: "Haz una pregunta o describe un cambio...",
-    button: 'Preguntar a IA',
-    asking: 'Preguntando...',
-  },
-  en: {
-    cardTitle: 'Ask AI & Customize Brief',
-    subTitle: "Don't understand a term? Want to change something? Ask questions or speak your changes in plain English.",
-    chips: ['Explain technical terms', 'Simplify requirements', 'Change budget or timeline', 'How will students help?'],
-    placeholder: "Ask a question or describe a change (e.g. 'Remove WhatsApp requirement')...",
-    button: 'Ask AI',
-    asking: 'Asking...',
-  },
-};
 
 export function BriefEditor({ initial, editing = false }: { initial: BusinessProject; editing?: boolean }) {
   const router = useRouter();
@@ -103,20 +61,10 @@ export function BriefEditor({ initial, editing = false }: { initial: BusinessPro
   const issues = publicationIssues(input);
 
   const activeLang = form.preferred_language || 'en';
-  const labels = UI_LABELS[activeLang] || UI_LABELS.en;
 
   useEffect(() => { if (!dirty) return; const warn = (e: BeforeUnloadEvent) => e.preventDefault(); window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn); }, [dirty]);
 
-  // Translate brief fields on language toggle
-  useEffect(() => {
-    if (briefViewMode === 'english' && activeLang !== 'en' && !englishFieldsCache.title) {
-      void translateFieldsTo('en');
-    } else if (briefViewMode === 'local' && activeLang !== 'en' && !localFieldsCache.title) {
-      void translateFieldsTo(activeLang);
-    }
-  }, [briefViewMode, activeLang]);
-
-  async function translateFieldsTo(targetLang: string) {
+  const translateFieldsTo = useCallback(async (targetLang: string) => {
     if (isTranslatingBrief) return;
     setIsTranslatingBrief(true);
     try {
@@ -142,7 +90,20 @@ export function BriefEditor({ initial, editing = false }: { initial: BusinessPro
     } finally {
       setIsTranslatingBrief(false);
     }
-  }
+  }, [form.problem_statement, form.summary, form.title, isTranslatingBrief]);
+
+  // Translate brief fields on language toggle.
+  useEffect(() => {
+    let targetLanguage: string | undefined;
+    if (briefViewMode === 'english' && activeLang !== 'en' && !englishFieldsCache.title) {
+      targetLanguage = 'en';
+    } else if (briefViewMode === 'local' && activeLang !== 'en' && !localFieldsCache.title) {
+      targetLanguage = activeLang;
+    }
+    if (!targetLanguage) return;
+    const timer = window.setTimeout(() => void translateFieldsTo(targetLanguage), 0);
+    return () => window.clearTimeout(timer);
+  }, [activeLang, briefViewMode, englishFieldsCache.title, localFieldsCache.title, translateFieldsTo]);
 
   function update<K extends keyof BriefInput>(key: K, value: BriefInput[K]) { 
     setForm({ ...form, [key]: value }); 

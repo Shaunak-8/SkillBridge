@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FolderKanban, Sparkles, Settings, Users } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Sparkles, Settings, Users, MessageSquare } from 'lucide-react';
+
+import { publicChatConfig } from '@/lib/chat/config';
 
 const links = [
   { href: '/business/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,6 +16,7 @@ const links = [
 
 export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
   const path = usePathname();
+  const visibleLinks = publicChatConfig() ? [...links, { href: '/business/messages', label: 'Messages', icon: MessageSquare }] : links;
 
   return (
     <nav
@@ -24,7 +27,7 @@ export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
           : 'space-y-1.5'
       }
     >
-      {links.map(({ href, label, icon: Icon }) => {
+      {visibleLinks.map(({ href, label, icon: Icon }) => {
         const active =
           path === href ||
           (href === '/business/projects' &&

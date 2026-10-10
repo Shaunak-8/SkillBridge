@@ -92,7 +92,6 @@ const unrepaired = [];
 // brief is written first, then the project is confirmed (confirmed_version = brief_version) and published,
 // then advanced draft -> published -> in_progress -> completed. Locked rows are reported, never forced.
 async function seedProject(p) {
-  const brief = [p.title, p.summary, p.problem, p.category, p.loc, p.req, p.deliverables, p.timeline];
   const target = p.status;
   const [existing] = await sql`SELECT status FROM skillbridge.projects WHERE id = ${p.id}`;
   if (!existing) {
