@@ -1,16 +1,13 @@
 // src/components/student/StudentDashboardView.tsx
 // Rich Student Dashboard integrated with Workstream 4 profile/portfolio and Member 5 applications
 
-"use client";
-
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import {
   ArrowRight,
   Briefcase,
   ClipboardCheck,
   ExternalLink,
-  Loader2,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -22,7 +19,7 @@ import { WelcomeBanner } from "@/components/shared/WelcomeBanner";
 import { ProfileCompleteness } from "./ProfileCompleteness";
 
 // Shape of GET /api/students/me/applications items (WS5).
-interface DashboardApplication {
+export interface DashboardApplication {
   id: string;
   project_title: string;
   project_category: string;
@@ -30,43 +27,15 @@ interface DashboardApplication {
   created_at: string;
 }
 
-export function StudentDashboardView() {
-  const [profile, setProfile] = useState<StudentProfileDTO | null>(null);
-  const [portfolioItems, setPortfolioItems] = useState<StudentPortfolioItemDTO[]>([]);
-  const [applications, setApplications] = useState<DashboardApplication[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Load profile and portfolio
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [res, appsRes] = await Promise.all([
-          fetch("/api/students/me"),
-          fetch("/api/students/me/applications?pageSize=5"),
-        ]);
-        if (res.ok) {
-          const json = await res.json();
-          setProfile(json.data);
-          setPortfolioItems(json.data.portfolioItems || []);
-        }
-        if (appsRes.ok) setApplications((await appsRes.json()).items ?? []);
-      } catch (err) {
-        console.error("Failed to load profile for dashboard:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[300px] items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-[#D83D63]" />
-      </div>
-    );
-  }
-
+export function StudentDashboardView({
+  profile,
+  applications,
+  portfolioItems
+}: {
+  profile: StudentProfileDTO | null,
+  applications: DashboardApplication[],
+  portfolioItems: StudentPortfolioItemDTO[]
+}) {
   const completeness = profile
     ? calculateProfileCompleteness(profile, portfolioItems)
     : { score: 70, checklist: [] };
@@ -140,7 +109,7 @@ export function StudentDashboardView() {
                 </span>
               </Link>
             </div>
-            {profile?.bio && (
+            {profile?.bio && (
               <p className="mt-4 text-xs leading-relaxed text-[#151515] bg-[#F7F0D2]/50 p-3.5 rounded-xl border-2 border-[#111111]">
                 &ldquo;{profile.bio}&rdquo;
               </p>
