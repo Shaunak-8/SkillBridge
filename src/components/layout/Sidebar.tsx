@@ -27,7 +27,7 @@ export function Sidebar({ role }: { role: Role }) {
       { href: "/community", label: t('community'), icon: MessageSquare },
       { href: "/student/applications", label: t('nav_my_applications'), icon: ClipboardCheck },
       { href: "/student/my-projects", label: t('nav_active_projects'), icon: BriefcaseBusiness },
-      { href: "/student/assessments", label: "Assessments", icon: BarChart3 },
+      { href: "/student/assessments", label: t('nav_assessments'), icon: BarChart3 },
       { href: "/student/profile", label: t('nav_profile_portfolio'), icon: UserCheck },
     ],
     business: [
@@ -41,8 +41,8 @@ export function Sidebar({ role }: { role: Role }) {
     admin: [
       { href: "/admin/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
       { href: "/community", label: t('community'), icon: MessageSquare },
-      { href: "/admin/users", label: "Users", icon: Users },
-      { href: "/admin/projects", label: "Projects", icon: FolderKanban },
+      { href: "/admin/users", label: t('nav_users'), icon: Users },
+      { href: "/admin/projects", label: t('nav_projects'), icon: FolderKanban },
     ],
   };
 

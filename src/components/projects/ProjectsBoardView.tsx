@@ -7,6 +7,7 @@ import { Badge, Button, Card, Input, SectionTitle } from '@/components/ui';
 import { SkillBadge } from '@/components/shared/ProjectCard';
 import { EmptyState } from '@/components/ws5/parts';
 import { useLanguage } from '@/lib/i18n/context';
+import { getPretranslatedText } from '@/lib/i18n/pretranslated-briefs';
 
 interface ProjectItem {
   id: string;
@@ -48,7 +49,18 @@ export function ProjectsBoardView({
   pages,
 }: ProjectsBoardViewProps) {
   const { locale, t } = useLanguage();
-  const [translations, setTranslations] = useState<Record<string, { title: string; summary: string }>>({});
+  const [translations, setTranslations] = useState<Record<string, { title: string; summary: string }>>(() => {
+    if (locale === 'en') return {};
+    const seeded: Record<string, { title: string; summary: string }> = {};
+    for (const item of initialData.items) {
+      const pTitle = getPretranslatedText(item.title, locale);
+      const pSum = getPretranslatedText(item.summary, locale);
+      if (pTitle || pSum) {
+        seeded[item.id] = { title: pTitle || item.title, summary: pSum || item.summary };
+      }
+    }
+    return seeded;
+  });
   const [translating, setTranslating] = useState(false);
 
   // Auto-translate project cards when language changes away from English
@@ -59,10 +71,19 @@ export function ProjectsBoardView({
     }
 
     let active = true;
+    const seeded: Record<string, { title: string; summary: string }> = {};
+    for (const item of initialData.items) {
+      const pTitle = getPretranslatedText(item.title, locale);
+      const pSum = getPretranslatedText(item.summary, locale);
+      if (pTitle || pSum) {
+        seeded[item.id] = { title: pTitle || item.title, summary: pSum || item.summary };
+      }
+    }
+    setTranslations(seeded);
     setTranslating(true);
 
     const translateItems = async () => {
-      const newTranslations: Record<string, { title: string; summary: string }> = {};
+      const newTranslations: Record<string, { title: string; summary: string }> = { ...seeded };
       for (const item of initialData.items) {
         try {
           const [tTitleRes, tSummaryRes] = await Promise.all([
@@ -84,7 +105,7 @@ export function ProjectsBoardView({
             summary: tSummary.translated || tSummary.translatedText || item.summary,
           };
         } catch {
-          // Keep original on error
+          // Keep pretranslated or original on error
         }
       }
       if (active) {
@@ -184,7 +205,7 @@ export function ProjectsBoardView({
                 : 'border-[#111111]/30 bg-white text-[#655F52] hover:border-[#111111] hover:text-[#151515]'
             }`}
           >
-            {c ?? (t('filter_all') !== 'filter_all' ? t('filter_all') : 'All')}
+            {c ? (t(c) !== c ? t(c) : c) : (t('filter_all') !== 'filter_all' ? t('filter_all') : 'All')}
           </Link>
         ))}
       </nav>
@@ -214,6 +235,12 @@ export function ProjectsBoardView({
           {initialData.items.map((p) => {
             const displayTitle = translations[p.id]?.title || p.title;
             const displaySummary = translations[p.id]?.summary || p.summary;
+            const displayCategory = t(p.category) !== p.category ? t(p.category) : p.category;
+            const displayLocation = p.location_text
+              ? (t(p.location_text) !== p.location_text ? t(p.location_text) : p.location_text)
+              : p.remote_ok
+              ? t('remote_friendly')
+              : t('location_flexible');
 
             return (
               <Card
@@ -222,7 +249,7 @@ export function ProjectsBoardView({
               >
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <span className="rounded-lg border border-[#111111] bg-[#F2BE4E] px-2 py-0.5 text-xs font-black text-[#151515]">
-                    {p.category}
+                    {displayCategory}
                   </span>
                   {p.remote_ok && (
                     <span className="rounded-lg border border-[#111111] bg-[#dbf5ed] px-2 py-0.5 text-xs font-bold text-emerald-900">
@@ -247,13 +274,13 @@ export function ProjectsBoardView({
                 <div className="mt-auto border-t-2 border-[#111111]/10 pt-4">
                   <span className="flex items-center gap-1 text-xs font-bold text-[#655F52]">
                     <MapPin size={14} />
-                    {p.location_text ?? (p.remote_ok ? 'Remote Friendly' : 'Location flexible')}
+                    {displayLocation}
                   </span>
                   <Link
                     href={`/projects/${p.id}`}
                     className="btn-press mt-3 inline-flex w-full items-center justify-between rounded-xl border-2 border-[#111111] bg-white px-3 py-2 text-xs font-black text-[#151515] shadow-[2px_2px_0_#111111] hover:bg-[#F2BE4E] transition"
                   >
-                    <span>{t('view_project') !== 'view_project' ? t('view_project') : 'View Project'}</span>
+                    <span>{t('view_project')}</span>
                     <ArrowUpRight size={15} />
                   </Link>
                 </div>

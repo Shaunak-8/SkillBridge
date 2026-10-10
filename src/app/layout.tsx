@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import './globals.css';
 import { LanguageProvider } from '@/lib/i18n/context';
 
@@ -7,11 +8,14 @@ export const metadata: Metadata = {
   description: 'A skills-first marketplace connecting local businesses and students.',
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const cookieStore = await cookies();
+  const initialLocale = cookieStore.get('skillbridge_locale')?.value || 'en';
+
   return (
-    <html lang="en">
+    <html lang={initialLocale}>
       <body>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider initialLocale={initialLocale}>{children}</LanguageProvider>
       </body>
     </html>
   );

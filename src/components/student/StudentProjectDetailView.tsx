@@ -21,6 +21,7 @@ import { SkillBadge } from '@/components/shared/ProjectCard';
 import { useTextToSpeech } from '@/lib/utils/speech';
 import type { FullProjectDetail } from '@/lib/ws5/repo';
 import { useLanguage } from '@/lib/i18n/context';
+import { getPretranslatedText } from '@/lib/i18n/pretranslated-briefs';
 
 interface StudentProjectDetailViewProps {
   project: FullProjectDetail;
@@ -29,16 +30,33 @@ interface StudentProjectDetailViewProps {
 export function StudentProjectDetailView({ project }: StudentProjectDetailViewProps) {
   const { locale, language, t } = useLanguage();
   const [showOriginal, setShowOriginal] = useState(false);
+  const originalLang = project.preferredLanguage || 'en';
+
   const [activeTranslation, setActiveTranslation] = useState<{
     title?: string;
     summary?: string;
     problemStatement?: string;
     deliverables?: string[];
-  } | null>(null);
+  } | null>(() => {
+    if (locale !== originalLang) {
+      const preTitle = getPretranslatedText(project.title, locale);
+      const preSummary = getPretranslatedText(project.summary, locale);
+      const preProblem = project.problemStatement ? getPretranslatedText(project.problemStatement, locale) : undefined;
+      const preDelivs = project.deliverables?.map((d) => getPretranslatedText(d, locale) || d);
+      if (preTitle || preSummary) {
+        return {
+          title: preTitle || project.title,
+          summary: preSummary || project.summary,
+          problemStatement: preProblem || project.problemStatement,
+          deliverables: preDelivs || project.deliverables,
+        };
+      }
+    }
+    return null;
+  });
   const [isTranslating, setIsTranslating] = useState(false);
 
   const { isSpeaking, speak, stop: stopSpeaking } = useTextToSpeech();
-  const originalLang = project.preferredLanguage || 'en';
 
   const handleTranslateBrief = async () => {
     if (activeTranslation) {
@@ -103,13 +121,28 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
   // Auto-translate project brief whenever the user selects a language different from English
   useEffect(() => {
     if (locale !== originalLang) {
-      setActiveTranslation(null);
+      const preTitle = getPretranslatedText(project.title, locale);
+      const preSummary = getPretranslatedText(project.summary, locale);
+      const preProblem = project.problemStatement ? getPretranslatedText(project.problemStatement, locale) : undefined;
+      const preDelivs = project.deliverables?.map((d) => getPretranslatedText(d, locale) || d);
+
+      if (preTitle || preSummary) {
+        setActiveTranslation({
+          title: preTitle || project.title,
+          summary: preSummary || project.summary,
+          problemStatement: preProblem || project.problemStatement,
+          deliverables: preDelivs || project.deliverables,
+        });
+        setShowOriginal(false);
+      } else {
+        setActiveTranslation(null);
+      }
       void handleTranslateBrief();
     } else {
       setActiveTranslation(null);
       setShowOriginal(false);
     }
-  }, [locale, originalLang]);
+  }, [locale, originalLang, project]);
 
   // Toggle voice narration of the project brief
   const toggleAudio = () => {
@@ -140,12 +173,44 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
     ? new Intl.DateTimeFormat(locale === 'en' ? 'en-IN' : locale, { dateStyle: 'medium' }).format(new Date(project.publishedAt))
     : project.createdAt
     ? new Intl.DateTimeFormat(locale === 'en' ? 'en-IN' : locale, { dateStyle: 'medium' }).format(new Date(project.createdAt))
-    : 'Recently';
+    : t('recently');
 
   const displayedTitle = showOriginal || !activeTranslation?.title ? project.title : activeTranslation.title;
   const displayedSummary = showOriginal || !activeTranslation?.summary ? project.summary : activeTranslation.summary;
   const displayedProblem = showOriginal || !activeTranslation?.problemStatement ? project.problemStatement : activeTranslation.problemStatement;
   const displayedDeliverables = showOriginal || !activeTranslation?.deliverables ? project.deliverables : activeTranslation.deliverables;
+
+  const displayedCategory = project.category ? (t(project.category) !== project.category ? t(project.category) : project.category) : t('general_project');
+
+  const displayedBusiness = project.businessName
+    ? (t(project.businessName) !== project.businessName ? t(project.businessName) : project.businessName)
+    : t('verified_local_business');
+
+  const displayedBusinessType = project.businessType
+    ? (t(project.businessType) !== project.businessType ? t(project.businessType) : project.businessType)
+    : '';
+
+  const displayedLocation = project.locationText
+    ? (t(project.locationText) !== project.locationText ? t(project.locationText) : project.locationText)
+    : project.businessLocation
+    ? (t(project.businessLocation) !== project.businessLocation ? t(project.businessLocation) : project.businessLocation)
+    : project.remoteOk
+    ? t('remote_ok')
+    : t('india');
+
+  const displayedBudget = project.budgetLabel
+    ? (t(project.budgetLabel) !== project.budgetLabel ? t(project.budgetLabel) : project.budgetLabel)
+    : project.compensation === 'paid'
+    ? t('paid_project')
+    : project.compensation === 'negotiable'
+    ? t('stipend_negotiable')
+    : t('learning_project');
+
+  const displayedTimeline = project.timeline
+    ? (t(project.timeline) !== project.timeline ? t(project.timeline) : project.timeline)
+    : t('flexible_duration');
+
+  const displayedMode = project.mode === 'team' ? t('student_team_mode') : t('individual_builder_mode');
 
   return (
     <div className="space-y-6">
@@ -155,7 +220,7 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
         <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#111111]/10 pb-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-lg border-2 border-[#111111] bg-[#F2BE4E] px-2.5 py-0.5 text-xs font-black text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
-              {project.category || 'General Project'}
+              {displayedCategory}
             </span>
             <Badge tone="green">{t('open_for_applications')}</Badge>
             {project.remoteOk && (
@@ -179,9 +244,9 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
                     ? t('loading')
                     : activeTranslation
                     ? showOriginal
-                      ? `Show ${language.name}`
+                      ? `${language.name}`
                       : t('view_original')
-                    : `Translate to ${language.name}`}
+                    : `${language.name} ${t('translate_to_lang')}`}
                 </span>
               </button>
             )}
@@ -203,7 +268,7 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
           <div className="mt-3 flex items-center justify-between rounded-lg border border-[#111111]/20 bg-[#F7F0D2]/40 px-3 py-1.5 text-xs font-bold text-[#655F52]">
             <span>
               {showOriginal
-                ? `Canonical original in ${originalLang.toUpperCase()}`
+                ? `Original: ${originalLang.toUpperCase()}`
                 : `${t('translated_from')} English (${language.nativeName})`}
             </span>
             <button
@@ -211,7 +276,7 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
               onClick={() => setShowOriginal(!showOriginal)}
               className="text-[#D83D63] underline hover:text-[#c22e53]"
             >
-              {showOriginal ? `View in ${language.name}` : t('view_original')}
+              {showOriginal ? `${language.name}` : t('view_original')}
             </button>
           </div>
         )}
@@ -232,14 +297,14 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
             <Store size={16} className="text-[#D83D63]" />
             <span>
               {t('posted_by')}{' '}
-              <span className="font-black text-[#151515]">{project.businessName || 'Verified Local Business'}</span>
-              {project.businessType ? ` (${project.businessType})` : ''}
+              <span className="font-black text-[#151515]">{displayedBusiness}</span>
+              {displayedBusinessType ? ` (${displayedBusinessType})` : ''}
             </span>
           </div>
 
           <div className="inline-flex items-center gap-1.5 text-[#655F52]">
             <MapPin size={15} />
-            <span>{project.locationText || project.businessLocation || (project.remoteOk ? t('remote_ok') : 'India')}</span>
+            <span>{displayedLocation}</span>
           </div>
 
           <div className="inline-flex items-center gap-1.5 text-[#655F52]">
@@ -330,10 +395,10 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
             <span>{t('compensation')}</span>
           </div>
           <p className="mt-2 text-base font-black text-[#151515]">
-            {project.budgetLabel || (project.compensation === 'paid' ? 'Paid Project' : project.compensation === 'negotiable' ? 'Stipend Negotiable' : 'Learning Project')}
+            {displayedBudget}
           </p>
           <p className="mt-0.5 text-[11px] font-semibold text-[#655F52]">
-            Agreed directly with business
+            {t('agreed_with_business')}
           </p>
         </div>
 
@@ -343,10 +408,10 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
             <span>{t('timeline')}</span>
           </div>
           <p className="mt-2 text-base font-black text-[#151515]">
-            {project.timeline || 'Flexible Duration (2–4 weeks)'}
+            {displayedTimeline}
           </p>
           <p className="mt-0.5 text-[11px] font-semibold text-[#655F52]">
-            Part-time friendly
+            {t('part_time_friendly')}
           </p>
         </div>
 
@@ -356,10 +421,10 @@ export function StudentProjectDetailView({ project }: StudentProjectDetailViewPr
             <span>{t('project_mode')}</span>
           </div>
           <p className="mt-2 text-base font-black text-[#151515]">
-            {project.mode === 'team' ? 'Student Team (2–3)' : 'Individual Builder'}
+            {displayedMode}
           </p>
           <p className="mt-0.5 text-[11px] font-semibold text-[#655F52]">
-            Direct owner mentoring
+            {t('direct_mentoring')}
           </p>
         </div>
       </div>
