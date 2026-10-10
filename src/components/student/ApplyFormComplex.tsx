@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
-import type { StudentPortfolioItemDTO, StudentProfileDTO } from '@/types/student';
+import type { StudentProfileDTO } from '@/types/student';
 
 interface ApplicationProject {
   id: string;
@@ -12,15 +12,10 @@ interface ApplicationProject {
 
 export function ApplyFormComplex({ project, profile }: { project: ApplicationProject; profile: StudentProfileDTO }) {
   const [step, setStep] = useState(1);
-  const [resumeId, setResumeId] = useState<string | null>(null);
-  const [resumeName, setResumeName] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [selectedPortfolio, setSelectedPortfolio] = useState<string[]>([]);
   const [pitch, setPitch] = useState('');
   const [answers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const portfolioItems = profile.portfolioItems ?? [];
 
   // Validation
   const hasMissingProfile = !profile.displayName || !profile.educationLevel || !profile.skills || profile.skills.length === 0;
@@ -41,42 +36,12 @@ export function ApplyFormComplex({ project, profile }: { project: ApplicationPro
     );
   }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setMsg(null);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/student/resume', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (res.ok) {
-        setResumeId(data.resume.id);
-        setResumeName(data.resume.file_name);
-      } else {
-        setMsg({ ok: false, text: data.error || 'Failed to upload resume.' });
-      }
-    } catch {
-      setMsg({ ok: false, text: 'Network error uploading resume.' });
-    }
-    setUploading(false);
-  };
-
-  const handleTogglePortfolio = (id: string) => {
-    setSelectedPortfolio(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
-  };
-
   const submit = async () => {
     setBusy(true); setMsg(null);
     try {
       const payload = {
         cover_note: pitch || 'Applied',
         pitch,
-        resume_id: resumeId,
-        portfolio_item_ids: selectedPortfolio,
         answers: Object.entries(answers).map(([q, a]) => ({ question_id: q, answer_text: a })),
         availability_hours: profile.availability?.hoursPerWeek,
       };
@@ -122,11 +87,8 @@ export function ApplyFormComplex({ project, profile }: { project: ApplicationPro
           <p className="text-sm"><strong>Education:</strong> {profile.educationLevel}</p>
           <p className="text-sm"><strong>Skills:</strong> {profile.skills?.join(', ')}</p>
 
-          <h3 className="font-bold text-lg border-b-2 border-line pb-2 mt-6">Evidence</h3>
-          {resumeName && <p className="text-sm"><strong>Resume:</strong> {resumeName}</p>}
-          {selectedPortfolio.length > 0 && (
-             <p className="text-sm"><strong>Portfolio Items:</strong> {selectedPortfolio.length} selected</p>
-          )}
+          <h3 className="font-bold text-lg border-b-2 border-line pb-2 mt-6">Profile evidence</h3>
+          <p className="text-sm">Your saved resume, portfolio, interests, goals, and availability will be shared from your student profile.</p>
 
           <h3 className="font-bold text-lg border-b-2 border-line pb-2 mt-6">Pitch</h3>
           <p className="text-sm whitespace-pre-wrap">{pitch}</p>
@@ -145,33 +107,8 @@ export function ApplyFormComplex({ project, profile }: { project: ApplicationPro
   return (
     <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-8">
       <div className="rounded-xl border-2 border-[#111111] bg-white p-6 shadow-[4px_4px_0_#111111]">
-        <h3 className="font-black text-lg mb-4">Resume or Portfolio (At least one required)</h3>
-        
-        <div className="mb-6 border-2 border-dashed border-[#111111] rounded-xl p-4 bg-gray-50">
-          <label className="block text-sm font-bold mb-2">Upload Resume (PDF, DOCX)</label>
-          <input type="file" accept=".pdf,.doc,.docx" onChange={handleUpload} disabled={uploading} className="text-sm" />
-          {uploading && <p className="text-xs text-brand mt-2">Uploading...</p>}
-          {resumeName && <p className="text-sm text-green-700 font-bold mt-2">✓ Attached: {resumeName}</p>}
-        </div>
-
-        <h4 className="font-bold text-sm mb-2">Select Portfolio Projects</h4>
-        {portfolioItems.length > 0 ? (
-          <div className="space-y-2">
-            {portfolioItems.map((item: StudentPortfolioItemDTO) => (
-              <label key={item.id} className="flex items-center gap-2 cursor-pointer text-sm font-medium">
-                <input 
-                  type="checkbox" 
-                  checked={selectedPortfolio.includes(item.id)} 
-                  onChange={() => handleTogglePortfolio(item.id)}
-                  className="rounded border-[#111111] text-[#D83D63] focus:ring-[#D83D63]"
-                />
-                {item.title}
-              </label>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted">No portfolio items added yet. You can add them in your profile.</p>
-        )}
+        <h3 className="font-black text-lg mb-4">Your student profile</h3>
+        <p className="text-sm text-muted">Your saved resume and portfolio are attached automatically. You only need to add a short project-specific pitch below.</p>
       </div>
 
       <div className="rounded-xl border-2 border-[#111111] bg-white p-6 shadow-[4px_4px_0_#111111]">
@@ -189,7 +126,7 @@ export function ApplyFormComplex({ project, profile }: { project: ApplicationPro
       {msg && <p role="alert" className="text-xs font-bold text-[#D83D63]">{msg.text}</p>}
 
       <div className="flex justify-end">
-         <Button type="submit" disabled={!resumeId && selectedPortfolio.length === 0}>
+         <Button type="submit">
            Review Application
          </Button>
       </div>

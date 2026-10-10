@@ -14,29 +14,14 @@ import {
   Users,
 } from "lucide-react";
 import type { Role } from "@/types";
-import { publicChatConfig } from "@/lib/chat/config";
 import { BusinessNav } from "@/components/business/BusinessNav";
+import { StudentNav } from "@/components/student/StudentNav";
 import { useLanguage } from "@/lib/i18n/context";
 
 export function Sidebar({ role }: { role: Role }) {
   const { t } = useLanguage();
 
-  const studentLinks = [
-    { href: "/student/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
-    { href: "/student/projects", label: t('nav_discover_projects'), icon: FolderKanban },
-    { href: "/student/community", label: t('community'), icon: MessageSquare },
-    { href: "/student/applications", label: t('nav_my_applications'), icon: ClipboardCheck },
-    { href: "/student/my-projects", label: t('nav_active_projects'), icon: BriefcaseBusiness },
-    { href: "/student/assessments", label: t('nav_assessments'), icon: BarChart3 },
-    { href: "/student/profile", label: t('nav_profile_portfolio'), icon: UserCheck },
-  ];
-
-  if (publicChatConfig()) {
-    studentLinks.push({ href: '/student/messages', label: t('messages') !== 'messages' ? t('messages') : 'Messages', icon: MessageSquare });
-  }
-
-  const links: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
-    student: studentLinks,
+  const links: Record<Exclude<Role, "student">, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
     business: [
       { href: "/business/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
       { href: "/business/projects/new", label: t('nav_create_project'), icon: Sparkles },
@@ -72,6 +57,8 @@ export function Sidebar({ role }: { role: Role }) {
 
         {role === "business" ? (
           <BusinessNav />
+        ) : role === "student" ? (
+          <StudentNav />
         ) : (
           <nav className="space-y-1.5">
             {links[role].map(({ href, label, icon: Icon }) => (

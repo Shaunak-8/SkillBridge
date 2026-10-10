@@ -78,6 +78,20 @@ export function StudentDashboardView({
         />
       </div>
 
+      {completeness.score < 80 && (
+        <div className="flex flex-col gap-4 rounded-2xl border-2 border-[#111111] bg-[#F2BE4E] p-5 shadow-[4px_4px_0_#111111] sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-black text-[#151515]">Make your profile now for better matches</h2>
+            <p className="mt-1 text-xs font-semibold text-[#655F52]">
+              This is optional. You can explore projects now and complete your profile whenever you are ready.
+            </p>
+          </div>
+          <Link href="/student/profile" className="btn-press inline-flex min-h-10 items-center justify-center rounded-xl border-2 border-[#111111] bg-white px-4 text-xs font-black text-[#151515] shadow-[2px_2px_0_#111111]">
+            Build my profile <ArrowRight size={14} className="ml-1.5" />
+          </Link>
+        </div>
+      )}
+
       {/* Main Grid: 2 columns */}
       <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         {/* Left Column */}

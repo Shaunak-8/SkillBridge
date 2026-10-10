@@ -1,6 +1,5 @@
-import { requireRole } from '@/lib/auth/profile';
-export const dynamic = 'force-dynamic';
-export default async function StudentLayout({ children }: { children: React.ReactNode }) {
-  await requireRole('student');
-  return children;
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+
+export default function StudentLayout({ children }: { children: React.ReactNode }) {
+  return <DashboardLayout role="student">{children}</DashboardLayout>;
 }

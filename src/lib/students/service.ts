@@ -24,6 +24,10 @@ function toItem(r: Row): StudentPortfolioItemDTO {
   };
 }
 
+function toResume(r: Row | undefined) {
+  return r ? { id: r.id, fileName: r.file_name, fileUrl: r.file_url, createdAt: iso(r.created_at) } : undefined;
+}
+
 function toProfile(r: Row, items: StudentPortfolioItemDTO[]): StudentProfileDTO {
   const schedule = SCHEDULES.find((s) => s === r.availability) ?? 'Flexible';
   const dto: StudentProfileDTO = {
@@ -31,7 +35,7 @@ function toProfile(r: Row, items: StudentPortfolioItemDTO[]): StudentProfileDTO 
     fieldOfStudy: r.field_of_study, studyYear: yearFromDb(r.study_year), skills: r.skills, interests: r.interests,
     learningGoals: r.learning_goals, preferredCategories: r.preferred_categories,
     availability: { hoursPerWeek: r.availability_hours_per_week ?? 0, schedulePreference: schedule, notes: r.availability_notes },
-    visibility: VISIBILITY_FROM_DB(r.visibility), portfolioItems: items,
+    visibility: VISIBILITY_FROM_DB(r.visibility), portfolioItems: items, resume: toResume(r.resume),
     createdAt: iso(r.created_at), updatedAt: iso(r.updated_at),
   };
   return { ...dto, completenessScore: calculateProfileCompleteness(dto, items).score };
@@ -48,7 +52,10 @@ export async function getMyProfile(profileId: string): Promise<StudentProfileDTO
   // Read first, in parallel: the profile row and its portfolio need no ids from each other.
   const read = async () => {
     const [rows, items] = await Promise.all([
-      sql`SELECT sp.*, pr.full_name FROM skillbridge.student_profiles sp
+      sql`SELECT sp.*, pr.full_name,
+        (SELECT row_to_json(r) FROM skillbridge.resumes r
+          WHERE r.student_id = sp.id ORDER BY r.created_at DESC, r.id DESC LIMIT 1) AS resume
+        FROM skillbridge.student_profiles sp
         JOIN skillbridge.profiles pr ON pr.id = sp.profile_id WHERE sp.profile_id = ${profileId}`,
       sql`SELECT i.* FROM skillbridge.student_portfolio_items i
         JOIN skillbridge.student_profiles sp ON sp.id = i.student_id WHERE sp.profile_id = ${profileId} ORDER BY i.created_at DESC, i.id`,

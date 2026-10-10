@@ -24,31 +24,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const studentId = await studentIdForProfile(auth.profile.id);
     if (!studentId) return fail('Complete your student profile before applying.', 409);
     
-    // Complex applications must include evidence. Keep legacy cover-note submissions compatible.
-    const isComplexApplication = Boolean(
-      body.resume_id ||
-      (Array.isArray(body.portfolio_item_ids) && body.portfolio_item_ids.length > 0) ||
-      body.answers ||
-      body.availability_hours !== undefined ||
-      body.available_from,
-    );
-    if (isComplexApplication && !body.resume_id && (!Array.isArray(body.portfolio_item_ids) || body.portfolio_item_ids.length === 0)) {
-       return fail('You must provide either a resume or select at least one portfolio item.', 400);
-    }
-
     const project = await loadProject(id);
     if (!project || project.status !== 'published') return fail('Project not found.', 404);
-    
+
+    const isComplexApplication = Boolean(pitch || body.answers || body.availability_hours !== undefined || body.available_from);
     const created = isComplexApplication
       ? await insertComplexApplication(id, studentId, {
-        cover_note: note,
-        pitch,
-        resume_id: body.resume_id,
-        portfolio_item_ids: body.portfolio_item_ids,
-        answers: body.answers,
-        availability_hours: body.availability_hours,
-        available_from: body.available_from ? new Date(body.available_from) : undefined,
-      })
+          cover_note: note,
+          pitch: pitch || undefined,
+          answers: body.answers,
+          availability_hours: body.availability_hours,
+          available_from: body.available_from ? new Date(body.available_from) : undefined,
+        })
       : await insertApplication(id, studentId, note);
     
     if (!created) return fail('Project not found.', 404);

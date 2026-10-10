@@ -529,7 +529,7 @@ export function ProfileEditor({ initialProfile, onProfileUpdated }: ProfileEdito
             className="inline-flex items-center gap-2 rounded-xl border-2 border-[#111111] bg-[#D83D63] px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-[3px_3px_0_#111111] hover:bg-[#C02C51] active:translate-x-[2px] active:translate-y-[2px] transition-all disabled:opacity-50"
           >
             {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} strokeWidth={2.5} />}
-            Save Profile
+            Save all profile changes
           </button>
         </div>
       </div>

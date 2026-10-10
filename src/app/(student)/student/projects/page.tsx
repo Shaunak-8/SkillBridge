@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Badge, Card, SectionTitle } from "@/components/ui";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { SkillBadge } from "@/components/shared/ProjectCard";
 import { DbError, EmptyState, WhyMatch } from "@/components/ws5/parts";
 import { currentProfile } from "@/lib/auth/profile";
@@ -41,5 +40,5 @@ async function Recommended() {
 }
 
 export default function Page() {
-  return <DashboardLayout role="student"><SectionTitle title="Recommended for you" description="Projects that fit your skills, portfolio and availability. Each suggestion shows the profile details it is based on." /><Recommended /></DashboardLayout>;
+  return <><SectionTitle title="Recommended for you" description="Projects that fit your skills, portfolio and availability. Each suggestion shows the profile details it is based on." /><Recommended /></>;
 }
