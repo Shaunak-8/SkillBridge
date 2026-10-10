@@ -5,8 +5,11 @@ const config: CapacitorConfig = {
   appName: 'SkillBridge',
   webDir: 'out',
   server: {
-    url: 'http://10.139.203.6:3000',
-    cleartext: true
+    url: 'https://skillbridge-production-e381.up.railway.app',
+    cleartext: false
+  },
+  android: {
+    overrideUserAgent: 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36'
   }
 };
 
