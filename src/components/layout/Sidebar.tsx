@@ -12,8 +12,8 @@ import {
   Users,
 } from "lucide-react";
 import type { Role } from "@/types";
-import { publicChatConfig } from "@/lib/chat/config";
 import { BusinessNav } from "@/components/business/BusinessNav";
+import { StudentNav } from "@/components/student/StudentNav";
 
 const links: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
   student: [
@@ -39,10 +39,6 @@ const links: Record<Role, { href: string; label: string; icon: typeof LayoutDash
   ],
 };
 
-if (publicChatConfig()) {
-  links.student.push({ href: '/student/messages', label: 'Messages', icon: MessageSquare });
-}
-
 export function Sidebar({ role }: { role: Role }) {
   return (
     <aside className="hidden w-64 shrink-0 border-r-2 border-[#111111] bg-white lg:block">
@@ -63,6 +59,8 @@ export function Sidebar({ role }: { role: Role }) {
 
         {role === "business" ? (
           <BusinessNav />
+        ) : role === "student" ? (
+          <StudentNav />
         ) : (
           <nav className="space-y-1.5">
             {links[role].map(({ href, label, icon: Icon }) => (

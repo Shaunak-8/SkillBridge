@@ -1,4 +1,3 @@
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StudentDashboardView, type DashboardApplication } from "@/components/student/StudentDashboardView";
 import { getMyProfile } from '@/lib/students/service';
 import { listApplicationsForProfile } from '@/lib/ws5/repo';
@@ -12,13 +11,9 @@ export default async function StudentDashboard() {
     listApplicationsForProfile(current.profile.id, { page: 1, pageSize: 5 }),
   ]);
 
-  return (
-    <DashboardLayout role="student">
-      <StudentDashboardView 
-        profile={profile}
-        applications={applicationsRes.items as unknown as DashboardApplication[]}
-        portfolioItems={profile.portfolioItems ?? []}
-      />
-    </DashboardLayout>
-  );
+  return <StudentDashboardView
+    profile={profile}
+    applications={applicationsRes.items as unknown as DashboardApplication[]}
+    portfolioItems={profile.portfolioItems ?? []}
+  />;
 }
