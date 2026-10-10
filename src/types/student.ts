@@ -23,6 +23,13 @@ export interface StudentPortfolioItemDTO {
   updatedAt: string;
 }
 
+export interface StudentResumeDTO {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  createdAt: string;
+}
+
 export interface StudentProfileDTO {
   id: string;
   userId: string;
@@ -38,6 +45,7 @@ export interface StudentProfileDTO {
   availability: AvailabilityConfig;
   visibility: ProfileVisibility;
   portfolioItems?: StudentPortfolioItemDTO[];
+  resume?: StudentResumeDTO;
   completenessScore?: number;
   createdAt: string;
   updatedAt: string;

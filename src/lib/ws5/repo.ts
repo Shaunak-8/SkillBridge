@@ -203,7 +203,9 @@ export async function insertComplexApplication(projectId: string, studentId: str
 
   queries.push(
     sql`INSERT INTO skillbridge.applications (id, project_id, student_id, cover_note, resume_id, pitch, availability_hours, available_from)
-      SELECT ${id}, ${projectId}, ${studentId}, ${input.cover_note}, ${input.resume_id ?? null}, ${input.pitch ?? null}, ${input.availability_hours ?? null}, ${input.available_from ?? null}
+      SELECT ${id}, ${projectId}, ${studentId}, ${input.cover_note},
+        (SELECT r.id FROM skillbridge.resumes r WHERE r.student_id = ${studentId} ORDER BY r.created_at DESC, r.id DESC LIMIT 1),
+        ${input.pitch ?? null}, ${input.availability_hours ?? null}, ${input.available_from ?? null}
       WHERE EXISTS (SELECT 1 FROM skillbridge.projects WHERE id = ${projectId} AND status = 'published')`
   );
 
@@ -212,6 +214,12 @@ export async function insertComplexApplication(projectId: string, studentId: str
       sql`INSERT INTO skillbridge.application_portfolio_items(application_id, portfolio_item_id)
           SELECT ${id}, id FROM skillbridge.student_portfolio_items
           WHERE student_id = ${studentId} AND id = ANY(${input.portfolio_item_ids}::uuid[])`
+    );
+  }
+  else {
+    queries.push(
+      sql`INSERT INTO skillbridge.application_portfolio_items(application_id, portfolio_item_id)
+          SELECT ${id}, id FROM skillbridge.student_portfolio_items WHERE student_id = ${studentId}`
     );
   }
 

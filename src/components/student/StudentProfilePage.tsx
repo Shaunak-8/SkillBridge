@@ -22,6 +22,7 @@ import { calculateProfileCompleteness } from "@/lib/validation/student";
 import { ProfileCompleteness } from "./ProfileCompleteness";
 import { ProfileEditor } from "./ProfileEditor";
 import { PortfolioSection } from "./PortfolioSection";
+import { ResumeSection } from "./ResumeSection";
 
 export function StudentProfilePage() {
   const router = useRouter();
@@ -196,6 +197,8 @@ export function StudentProfilePage() {
               initialProfile={profile}
               onProfileUpdated={handleProfileUpdated}
             />
+
+            <ResumeSection initialResume={profile.resume} />
 
             <PortfolioSection
               items={portfolioItems}
@@ -393,4 +396,3 @@ export function StudentProfilePage() {
     </div>
   );
 }
-
