@@ -1,4 +1,5 @@
 -- Executed by scripts/test-teams.mjs inside a transaction that is always rolled back.
+-- Constraint triggers are DEFERRED until commit, so the test forces them with SET CONSTRAINTS where it matters.
 DO $$
 DECLARE
   suffix text := replace(gen_random_uuid()::text, '-', '');
@@ -11,8 +12,11 @@ DECLARE
   draft_project uuid;
   team_a uuid;
   team_b uuid;
+  team_c uuid;
+  team_d uuid;
   task_a uuid;
   task_b uuid;
+  task_d uuid;
   affected integer;
 BEGIN
   INSERT INTO skillbridge.profiles(auth_user_id, username, email, role, onboarding_completed)
@@ -47,6 +51,13 @@ BEGIN
     RAISE EXCEPTION 'One-character team name accepted';
   EXCEPTION WHEN check_violation THEN NULL; END;
 
+  -- A team created without a leader is rejected when constraints are checked.
+  BEGIN
+    INSERT INTO skillbridge.teams(project_id, name) VALUES (team_project, 'Leaderless');
+    SET CONSTRAINTS ALL IMMEDIATE;
+    RAISE EXCEPTION 'Team without a leader accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+
   INSERT INTO skillbridge.teams(project_id, name, description) VALUES (team_project, 'Alpha', 'First team') RETURNING id INTO team_a;
   INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, joined_at)
     VALUES (team_a, team_project, s[1], 'leader', 'active', now());
@@ -56,7 +67,7 @@ BEGIN
     RAISE EXCEPTION 'Duplicate team name (case-insensitive) accepted in one project';
   EXCEPTION WHEN unique_violation THEN NULL; END;
 
-  -- Leader rules.
+  -- Leader and invitation rules.
   BEGIN
     INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, expires_at)
       VALUES (team_a, team_project, s[2], 'leader', 'invited', now() + interval '7 days');
@@ -71,6 +82,11 @@ BEGIN
     INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, expires_at)
       VALUES (team_a, team_project, s[2], 'member', 'invited', NULL);
     RAISE EXCEPTION 'Invite without an expiry accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, joined_at)
+      VALUES (team_a, team_project, s[2], 'member', 'active', now());
+    RAISE EXCEPTION 'Member joined without an invitation';
   EXCEPTION WHEN check_violation THEN NULL; END;
   BEGIN
     INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, expires_at)
@@ -92,6 +108,15 @@ BEGIN
   UPDATE skillbridge.team_members SET status = 'declined', responded_at = now() WHERE team_id = team_a AND student_id = s[5];
   INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, invited_by, expires_at)
     VALUES (team_a, team_project, s[6], 'member', 'invited', s[1], now() + interval '7 days');
+  -- A declined invitation cannot be turned into membership without a new invitation.
+  BEGIN
+    UPDATE skillbridge.team_members SET status = 'active', joined_at = now() WHERE team_id = team_a AND student_id = s[5];
+    RAISE EXCEPTION 'Declined invite became membership';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    UPDATE skillbridge.team_members SET student_id = s[8] WHERE team_id = team_a AND student_id = s[4];
+    RAISE EXCEPTION 'Membership moved to another student';
+  EXCEPTION WHEN check_violation THEN NULL; END;
 
   -- An expired invite cannot be accepted and does not occupy a slot.
   UPDATE skillbridge.team_members SET expires_at = now() - interval '1 minute' WHERE team_id = team_a AND student_id = s[6];
@@ -108,20 +133,32 @@ BEGIN
   INSERT INTO skillbridge.teams(project_id, name) VALUES (team_project, 'Beta') RETURNING id INTO team_b;
   INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, joined_at)
     VALUES (team_b, team_project, s[8], 'leader', 'active', now());
-  -- Being invited to two teams at once is fine; being active in both is not.
+  -- Being invited to two teams at once is fine; being active in both is not (members or leaders).
   INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, invited_by, expires_at)
     VALUES (team_b, team_project, s[2], 'member', 'invited', s[8], now() + interval '7 days');
+  INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, invited_by, expires_at)
+    VALUES (team_b, team_project, s[1], 'member', 'invited', s[8], now() + interval '7 days');
   BEGIN
     UPDATE skillbridge.team_members SET status = 'active', joined_at = now() WHERE team_id = team_b AND student_id = s[2];
     RAISE EXCEPTION 'Student active in two teams of the same project';
   EXCEPTION WHEN unique_violation THEN NULL; END;
   BEGIN
-    INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, joined_at)
-      VALUES (team_b, team_project, s[1], 'member', 'active', now());
+    UPDATE skillbridge.team_members SET status = 'active', joined_at = now() WHERE team_id = team_b AND student_id = s[1];
     RAISE EXCEPTION 'A leader of one team became an active member of another team on the same project';
   EXCEPTION WHEN unique_violation THEN NULL; END;
 
-  -- Tasks.
+  -- Team status machine.
+  UPDATE skillbridge.teams SET status = 'active' WHERE id = team_a;
+  BEGIN
+    UPDATE skillbridge.teams SET status = 'forming' WHERE id = team_a;
+    RAISE EXCEPTION 'Active team went back to forming';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+
+  -- Tasks only exist on active teams.
+  BEGIN
+    INSERT INTO skillbridge.team_tasks(team_id, title, created_by) VALUES (team_b, 'Too early', s[8]);
+    RAISE EXCEPTION 'Task created on a team that has not started';
+  EXCEPTION WHEN check_violation THEN NULL; END;
   INSERT INTO skillbridge.team_tasks(team_id, title, created_by, assignee_id) VALUES (team_a, 'Design the logo', s[1], s[2]) RETURNING id INTO task_a;
   INSERT INTO skillbridge.team_tasks(team_id, title, created_by, assignee_id) VALUES (team_a, 'Write copy', s[1], s[3]) RETURNING id INTO task_b;
   BEGIN
@@ -139,6 +176,10 @@ BEGIN
   BEGIN
     INSERT INTO skillbridge.team_tasks(team_id, title, created_by, status) VALUES (team_a, 'Bad status', s[1], 'finished');
     RAISE EXCEPTION 'Unknown task status accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    UPDATE skillbridge.team_tasks SET team_id = team_b WHERE id = task_a;
+    RAISE EXCEPTION 'Task moved to another team';
   EXCEPTION WHEN check_violation THEN NULL; END;
   UPDATE skillbridge.team_tasks SET status = 'done' WHERE id = task_b;
   IF NOT EXISTS (SELECT 1 FROM skillbridge.team_tasks WHERE id = task_b AND completed_at IS NOT NULL) THEN
@@ -159,15 +200,29 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM skillbridge.team_tasks WHERE id = task_b AND assignee_id = s[3] AND status = 'done') THEN
     RAISE EXCEPTION 'Finished task lost its assignee when the member was removed';
   END IF;
+  -- A removed member cannot slip back in; they need a fresh invitation (an update of the same row).
+  BEGIN
+    UPDATE skillbridge.team_members SET status = 'active', joined_at = now() WHERE team_id = team_a AND student_id = s[3];
+    RAISE EXCEPTION 'Removed member rejoined without an invitation';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  UPDATE skillbridge.team_members SET status = 'invited', expires_at = now() + interval '7 days', left_at = NULL, joined_at = NULL, responded_at = NULL
+    WHERE team_id = team_a AND student_id = s[3];
 
-  -- Leadership transfer is two ordered statements; promoting first must fail.
+  -- Leadership transfer is two ordered statements inside one transaction.
   UPDATE skillbridge.team_members SET status = 'active', joined_at = now(), responded_at = now() WHERE team_id = team_a AND student_id = s[7];
   BEGIN
     UPDATE skillbridge.team_members SET role = 'leader' WHERE team_id = team_a AND student_id = s[7];
     RAISE EXCEPTION 'Two leaders after promoting before demoting';
   EXCEPTION WHEN unique_violation THEN NULL; END;
+  BEGIN
+    UPDATE skillbridge.team_members SET role = 'member' WHERE team_id = team_a AND student_id = s[1];
+    SET CONSTRAINTS ALL IMMEDIATE;
+    RAISE EXCEPTION 'Team left without a leader';
+  EXCEPTION WHEN check_violation THEN NULL; END;
   UPDATE skillbridge.team_members SET role = 'member' WHERE team_id = team_a AND student_id = s[1];
   UPDATE skillbridge.team_members SET role = 'leader' WHERE team_id = team_a AND student_id = s[7];
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
   SELECT count(*) INTO affected FROM skillbridge.team_members WHERE team_id = team_a AND role = 'leader' AND status = 'active';
   IF affected <> 1 THEN RAISE EXCEPTION 'Leadership transfer left % leaders', affected; END IF;
   BEGIN
@@ -175,25 +230,78 @@ BEGIN
     RAISE EXCEPTION 'Leader left without transferring leadership';
   EXCEPTION WHEN check_violation THEN NULL; END;
 
-  -- One application per team.
+  -- Team applications: only from the leader, for a team of 2-5 active members, on the team's own project.
+  BEGIN
+    INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[1], 'Not the leader', team_a);
+    RAISE EXCEPTION 'Team application from a non-leader accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[8], 'One-person team', team_b);
+    RAISE EXCEPTION 'Team application with a single member accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (solo_project, s[7], 'Wrong project', team_a);
+    RAISE EXCEPTION 'Team application on a different project than the team accepted';
+  EXCEPTION WHEN foreign_key_violation THEN NULL; END;
   INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[7], 'Team application', team_a);
   BEGIN
-    INSERT INTO skillbridge.applications(project_id, student_id, cover_note, team_id) VALUES (team_project, s[1], 'Second team application', team_a);
-    RAISE EXCEPTION 'Two applications for one team';
-  EXCEPTION WHEN unique_violation THEN NULL; END;
+    DELETE FROM skillbridge.teams WHERE id = team_a;
+    RAISE EXCEPTION 'Team with an application was deleted';
+  EXCEPTION WHEN foreign_key_violation THEN NULL; END;
 
-  -- Activity log and cascade.
-  INSERT INTO skillbridge.team_events(team_id, actor_id, type, payload) VALUES (team_a, s[7], 'task_created', '{"title":"x"}');
+  -- Disbanding releases everyone, so students can join other teams and nobody can be added afterwards.
+  INSERT INTO skillbridge.teams(project_id, name) VALUES (team_project, 'Gamma') RETURNING id INTO team_c;
+  INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, joined_at)
+    VALUES (team_c, team_project, s[5], 'leader', 'active', now());
+  INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, invited_by, expires_at)
+    VALUES (team_c, team_project, s[6], 'member', 'invited', s[5], now() + interval '7 days');
+  UPDATE skillbridge.teams SET status = 'disbanded' WHERE id = team_c;
+  SELECT count(*) INTO affected FROM skillbridge.team_members WHERE team_id = team_c AND status IN ('invited', 'active');
+  IF affected <> 0 THEN RAISE EXCEPTION 'Disbanded team still has % open memberships', affected; END IF;
   BEGIN
-    INSERT INTO skillbridge.team_events(team_id, actor_id, type) VALUES (team_a, s[7], '');
+    INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, invited_by, expires_at)
+      VALUES (team_c, team_project, s[4], 'member', 'invited', s[5], now() + interval '7 days');
+    RAISE EXCEPTION 'Invited into a disbanded team';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    UPDATE skillbridge.team_members SET status = 'invited', expires_at = now() + interval '7 days' WHERE team_id = team_c AND student_id = s[6];
+    RAISE EXCEPTION 'Re-invited into a disbanded team';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    UPDATE skillbridge.teams SET status = 'active' WHERE id = team_c;
+    RAISE EXCEPTION 'Disbanded team was revived';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
+
+  -- A former member of a disbanded team can lead a new one; archived teams are read-only history.
+  INSERT INTO skillbridge.teams(project_id, name) VALUES (team_project, 'Delta') RETURNING id INTO team_d;
+  INSERT INTO skillbridge.team_members(team_id, project_id, student_id, role, status, joined_at)
+    VALUES (team_d, team_project, s[5], 'leader', 'active', now());
+  UPDATE skillbridge.teams SET status = 'active' WHERE id = team_d;
+  INSERT INTO skillbridge.team_tasks(team_id, title, created_by, assignee_id) VALUES (team_d, 'Plan', s[5], s[5]) RETURNING id INTO task_d;
+  INSERT INTO skillbridge.team_events(team_id, actor_id, type, payload) VALUES (team_d, s[5], 'task_created', '{"title":"x"}');
+  UPDATE skillbridge.teams SET status = 'archived' WHERE id = team_d;
+  BEGIN
+    UPDATE skillbridge.team_tasks SET status = 'done' WHERE id = task_d;
+    RAISE EXCEPTION 'Task changed on an archived team';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    INSERT INTO skillbridge.team_tasks(team_id, title, created_by) VALUES (team_d, 'Late', s[5]);
+    RAISE EXCEPTION 'Task created on an archived team';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    INSERT INTO skillbridge.team_events(team_id, actor_id, type) VALUES (team_d, s[5], '');
     RAISE EXCEPTION 'Event without a type accepted';
   EXCEPTION WHEN check_violation THEN NULL; END;
-  DELETE FROM skillbridge.teams WHERE id = team_a;
-  SELECT (SELECT count(*) FROM skillbridge.team_members WHERE team_id = team_a)
-       + (SELECT count(*) FROM skillbridge.team_tasks WHERE team_id = team_a)
-       + (SELECT count(*) FROM skillbridge.team_events WHERE team_id = team_a) INTO affected;
+
+  -- Deleting a team (only possible without an application) cascades to its members, tasks and events.
+  DELETE FROM skillbridge.teams WHERE id = team_d;
+  SELECT (SELECT count(*) FROM skillbridge.team_members WHERE team_id = team_d)
+       + (SELECT count(*) FROM skillbridge.team_tasks WHERE team_id = team_d)
+       + (SELECT count(*) FROM skillbridge.team_events WHERE team_id = team_d) INTO affected;
   IF affected <> 0 THEN RAISE EXCEPTION 'Team delete left % orphan rows', affected; END IF;
-  IF EXISTS (SELECT 1 FROM skillbridge.applications WHERE team_id = team_a) THEN
-    RAISE EXCEPTION 'Application still points at a deleted team';
-  END IF;
+
+  -- Every deferred leader check must pass for the final state.
+  SET CONSTRAINTS ALL IMMEDIATE;
 END $$;
