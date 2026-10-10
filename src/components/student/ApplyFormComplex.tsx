@@ -3,19 +3,24 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
-import { useRouter } from 'next/navigation';
+import type { StudentPortfolioItemDTO, StudentProfileDTO } from '@/types/student';
 
-export function ApplyFormComplex({ project, profile }: { project: any; profile: any }) {
-  const router = useRouter();
+interface ApplicationProject {
+  id: string;
+  title: string;
+}
+
+export function ApplyFormComplex({ project, profile }: { project: ApplicationProject; profile: StudentProfileDTO }) {
   const [step, setStep] = useState(1);
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [resumeName, setResumeName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<string[]>([]);
   const [pitch, setPitch] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const portfolioItems = profile.portfolioItems ?? [];
 
   // Validation
   const hasMissingProfile = !profile.displayName || !profile.educationLevel || !profile.skills || profile.skills.length === 0;
@@ -150,9 +155,9 @@ export function ApplyFormComplex({ project, profile }: { project: any; profile: 
         </div>
 
         <h4 className="font-bold text-sm mb-2">Select Portfolio Projects</h4>
-        {profile.portfolioItems?.length > 0 ? (
+        {portfolioItems.length > 0 ? (
           <div className="space-y-2">
-            {profile.portfolioItems.map((item: any) => (
+            {portfolioItems.map((item: StudentPortfolioItemDTO) => (
               <label key={item.id} className="flex items-center gap-2 cursor-pointer text-sm font-medium">
                 <input 
                   type="checkbox" 

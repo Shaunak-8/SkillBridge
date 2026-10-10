@@ -16,8 +16,8 @@ export function CommunityPostForm({ type }: { type: CommunityType }) {
     try {
       await createPostAction(type, formData);
       router.push(`/${type}/community`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to create post');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create post');
       setLoading(false);
     }
   };

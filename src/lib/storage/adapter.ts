@@ -28,6 +28,7 @@ class LocalStorageAdapter implements StorageAdapter {
   async deleteFile(url: string): Promise<void> {
     // Basic implementation for local storage
     // Not critical for prototype, but should unlink the file
+    void url;
   }
 }
 

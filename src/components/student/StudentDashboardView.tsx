@@ -6,26 +6,20 @@ import Link from "next/link";
 import {
   ArrowRight,
   Briefcase,
-  CheckCircle2,
   ClipboardCheck,
-  Clock,
   ExternalLink,
-  GraduationCap,
-  Loader2,
-  Plus,
   Sparkles,
   TrendingUp,
-  UserCheck,
 } from "lucide-react";
 import type { StudentPortfolioItemDTO, StudentProfileDTO } from "@/types/student";
 import { calculateProfileCompleteness } from "@/lib/validation/student";
-import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { StatCard } from "@/components/shared/StatCard";
 import { WelcomeBanner } from "@/components/shared/WelcomeBanner";
 import { ProfileCompleteness } from "./ProfileCompleteness";
 
 // Shape of GET /api/students/me/applications items (WS5).
-interface DashboardApplication {
+export interface DashboardApplication {
   id: string;
   project_title: string;
   project_category: string;
@@ -33,14 +27,14 @@ interface DashboardApplication {
   created_at: string;
 }
 
-export function StudentDashboardView({ 
-  profile, 
-  applications, 
-  portfolioItems 
-}: { 
-  profile: StudentProfileDTO | null, 
-  applications: DashboardApplication[], 
-  portfolioItems: StudentPortfolioItemDTO[] 
+export function StudentDashboardView({
+  profile,
+  applications,
+  portfolioItems
+}: {
+  profile: StudentProfileDTO | null,
+  applications: DashboardApplication[],
+  portfolioItems: StudentPortfolioItemDTO[]
 }) {
   const completeness = profile
     ? calculateProfileCompleteness(profile, portfolioItems)
@@ -281,4 +275,3 @@ export function StudentDashboardView({
     </div>
   );
 }
-
