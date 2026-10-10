@@ -1,3 +1,5 @@
+'use client';
+
 import Link from "next/link";
 import {
   BarChart3,
@@ -14,36 +16,43 @@ import {
 import type { Role } from "@/types";
 import { publicChatConfig } from "@/lib/chat/config";
 import { BusinessNav } from "@/components/business/BusinessNav";
-
-const links: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
-  student: [
-    { href: "/student/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/student/projects", label: "Discover Projects", icon: FolderKanban },
-    { href: "/student/applications", label: "My Applications", icon: ClipboardCheck },
-    { href: "/student/my-projects", label: "Active Projects", icon: BriefcaseBusiness },
-    { href: "/student/assessments", label: "Assessments", icon: BarChart3 },
-    { href: "/student/profile", label: "My Profile & Portfolio", icon: UserCheck },
-    { href: "/student/community", label: "Student Community", icon: MessageSquare },
-  ],
-  business: [
-    { href: "/business/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/business/projects/new", label: "Create a Project", icon: Sparkles },
-    { href: "/business/projects", label: "My Projects", icon: FolderKanban },
-    { href: "/business/screening", label: "Find Students", icon: Users },
-    { href: "/business/profile", label: "Business Profile", icon: Settings },
-  ],
-  admin: [
-    { href: "/admin/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/admin/users", label: "Users", icon: Users },
-    { href: "/admin/projects", label: "Projects", icon: FolderKanban },
-  ],
-};
-
-if (publicChatConfig()) {
-  links.student.push({ href: '/student/messages', label: 'Messages', icon: MessageSquare });
-}
+import { useLanguage } from "@/lib/i18n/context";
 
 export function Sidebar({ role }: { role: Role }) {
+  const { t } = useLanguage();
+
+  const studentLinks = [
+    { href: "/student/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
+    { href: "/student/projects", label: t('nav_discover_projects'), icon: FolderKanban },
+    { href: "/student/community", label: t('community'), icon: MessageSquare },
+    { href: "/student/applications", label: t('nav_my_applications'), icon: ClipboardCheck },
+    { href: "/student/my-projects", label: t('nav_active_projects'), icon: BriefcaseBusiness },
+    { href: "/student/assessments", label: t('nav_assessments'), icon: BarChart3 },
+    { href: "/student/profile", label: t('nav_profile_portfolio'), icon: UserCheck },
+  ];
+
+  if (publicChatConfig()) {
+    studentLinks.push({ href: '/student/messages', label: t('messages') !== 'messages' ? t('messages') : 'Messages', icon: MessageSquare });
+  }
+
+  const links: Record<Role, { href: string; label: string; icon: typeof LayoutDashboard }[]> = {
+    student: studentLinks,
+    business: [
+      { href: "/business/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
+      { href: "/business/projects/new", label: t('nav_create_project'), icon: Sparkles },
+      { href: "/business/projects", label: t('nav_my_projects'), icon: FolderKanban },
+      { href: "/business/community", label: t('community'), icon: MessageSquare },
+      { href: "/business/screening", label: t('nav_find_students'), icon: Users },
+      { href: "/business/profile", label: t('nav_business_profile'), icon: Settings },
+    ],
+    admin: [
+      { href: "/admin/dashboard", label: t('nav_overview'), icon: LayoutDashboard },
+      { href: "/community", label: t('community'), icon: MessageSquare },
+      { href: "/admin/users", label: t('nav_users'), icon: Users },
+      { href: "/admin/projects", label: t('nav_projects'), icon: FolderKanban },
+    ],
+  };
+
   return (
     <aside className="hidden w-64 shrink-0 border-r-2 border-[#111111] bg-white lg:block">
       <div className="sticky top-0 flex h-screen flex-col p-5">
