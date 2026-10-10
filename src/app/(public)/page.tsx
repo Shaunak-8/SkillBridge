@@ -1,6 +1,20 @@
-import Link from "next/link";
-import { ArrowRight, CheckCircle2, HeartHandshake, Search, Sparkles, Target, Users } from "lucide-react";
-import { Button, Card } from "@/components/ui";
-import { ProjectCard } from "@/components/shared/ProjectCard";
-import { projects } from "@/data/mock-data";
-export default function Home() { return <main><section className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:pt-24"><div><div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand/15 bg-brand-soft px-3 py-1.5 text-xs font-bold text-brand"><Sparkles size={14} /> Skills over degrees</div><h1 className="max-w-3xl text-5xl font-bold leading-[1.05] tracking-[-0.04em] text-ink sm:text-6xl">Good problems deserve <span className="text-brand">curious people.</span></h1><p className="mt-6 max-w-xl text-lg leading-8 text-muted">Skillbridge connects local businesses with students ready to turn real-world challenges into meaningful projects.</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/projects"><Button>Explore projects <ArrowRight size={16} /></Button></Link><Link href="/register"><Button variant="secondary">Post a problem</Button></Link></div><div className="mt-10 flex items-center gap-6 text-sm text-muted"><span className="flex items-center gap-2"><CheckCircle2 size={17} className="text-emerald-500" />Free to explore</span><span className="flex items-center gap-2"><CheckCircle2 size={17} className="text-emerald-500" />No degree filters</span></div></div><div className="relative"><div className="absolute -inset-6 rounded-[2rem] bg-brand/5 blur-2xl" /><Card className="relative overflow-hidden p-5 sm:p-7"><div className="mb-6 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-brand">Fresh opportunities</p><h2 className="mt-1 text-xl font-bold">Find your next project</h2></div><span className="grid size-10 place-items-center rounded-xl bg-mint text-emerald-700"><Target size={19} /></span></div><div className="space-y-3">{projects.slice(0, 3).map((project) => <ProjectCard key={project.id} project={project} />)}</div></Card></div></section><section className="border-y border-line bg-white py-20"><div className="mx-auto max-w-7xl px-5"><div className="mx-auto max-w-2xl text-center"><p className="text-xs font-bold uppercase tracking-widest text-brand">One platform, many ways to contribute</p><h2 className="mt-3 text-3xl font-bold tracking-tight">From code to croissants, bring what you&apos;re good at.</h2></div><div className="mt-12 grid gap-5 md:grid-cols-3"><Card className="p-6"><Users className="text-brand" /><h3 className="mt-5 font-bold">For students</h3><p className="mt-2 text-sm leading-6 text-muted">Build a portfolio with projects that matter and mentors who care.</p></Card><Card className="p-6"><HeartHandshake className="text-brand" /><h3 className="mt-5 font-bold">For businesses</h3><p className="mt-2 text-sm leading-6 text-muted">Get a fresh perspective and practical help from emerging talent.</p></Card><Card className="p-6"><Search className="text-brand" /><h3 className="mt-5 font-bold">Skills-first matching</h3><p className="mt-2 text-sm leading-6 text-muted">Discover people by what they can do, not just what they studied.</p></Card></div></div></section></main>; }
+import { getHomepageData } from "@/lib/projects/homepage";
+import { HomeHero } from "@/components/home/HomeHero";
+import { HomeProjectsSection } from "@/components/home/HomeProjectsSection";
+import { HomeValueSection } from "@/components/home/HomeValueSection";
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const data = await getHomepageData();
+
+  return (
+    <main className="min-h-screen">
+      <HomeHero data={data} />
+      <HomeProjectsSection
+        projects={data.additionalProjects}
+        hasHeroProjects={data.featuredProjects.length > 0}
+      />
+      <HomeValueSection />
+    </main>
+  );
+}
