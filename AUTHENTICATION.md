@@ -140,7 +140,6 @@ src/app/api/workspace/[role]/route.ts
 src/components/auth/AuthForm.tsx
 src/components/auth/OnboardingForm.tsx
 src/components/auth/AccountControls.tsx
-src/components/auth/ProfileCard.tsx
 tests/auth.test.ts
 tests/auth-proxy.test.ts
 tests/profile-creation.test.ts

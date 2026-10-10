@@ -36,7 +36,7 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
 
   // Drafting takes several seconds: walk through what is actually happening so the wait is visible.
   useEffect(() => {
-    if (pending !== 'generate') { setStep(0); return; }
+    if (pending !== 'generate') return;
     const timer = setInterval(() => setStep(s => Math.min(s + 1, GENERATION_STEPS.length - 1)), STEP_MS);
     return () => clearInterval(timer);
   }, [pending]);
@@ -81,6 +81,7 @@ export function ProblemForm({ business }: { business: BusinessProfile }) {
     const parsed = problemSchema.safeParse({ problem, preferred_language: language });
     setError(''); setFields({});
     if (!parsed.success) { setFields(Object.fromEntries(parsed.error.issues.map(i => [String(i.path[0]), i.message]))); return; }
+    if (generate) setStep(0);
     setPending(generate ? 'generate' : 'draft');
     try {
       if (generate) {

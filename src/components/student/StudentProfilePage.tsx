@@ -4,16 +4,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
-  Briefcase,
   ExternalLink,
   Eye,
   Loader2,
   Lock,
   Pencil,
-  Sparkles,
-  UserCheck,
 } from "lucide-react";
 import type {
   ProfileCompletenessResult,
@@ -26,6 +24,7 @@ import { ProfileEditor } from "./ProfileEditor";
 import { PortfolioSection } from "./PortfolioSection";
 
 export function StudentProfilePage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<StudentProfileDTO | null>(null);
   const [portfolioItems, setPortfolioItems] = useState<StudentPortfolioItemDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +44,7 @@ export function StudentProfilePage() {
           await new Promise((resolve) => setTimeout(resolve, 500));
           res = await fetch("/api/students/me");
           if (res.status === 401) {
-            window.location.assign("/login");
+            router.push("/login");
             return;
           }
         }
@@ -58,16 +57,16 @@ export function StudentProfilePage() {
         const data: StudentProfileDTO = json.data;
         setProfile(data);
         setPortfolioItems(data.portfolioItems || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error loading profile:", err);
-        setError(err.message || "Could not load profile. Please refresh.");
+        setError(err instanceof Error && err.message ? err.message : "Could not load profile. Please refresh.");
       } finally {
         setLoading(false);
       }
     }
 
     loadData();
-  }, []);
+  }, [router]);
 
   const handleProfileUpdated = (updated: StudentProfileDTO) => {
     setProfile(updated);

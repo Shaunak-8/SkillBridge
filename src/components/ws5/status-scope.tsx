@@ -1,6 +1,9 @@
 "use client";
 import { createContext, useContext, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from 'next/link';
+import { publicChatConfig } from '@/lib/chat/config';
+import { canChatForApplication } from '@/lib/chat/policy';
 import { Button } from "@/components/ui";
 import { allowedNextStatuses, type ApplicationActor, type ApplicationStatus } from "@/lib/applications/status";
 import { ApplicationStatusBadge } from "./parts";
@@ -45,6 +48,12 @@ export function ApplicationStatusScope({ applicationId, status, actor, children 
 
 export function LiveStatusBadge() {
   return <ApplicationStatusBadge status={useScope().status} />;
+}
+
+export function LiveApplicationChatLink({ applicationId, projectActive = true }: { applicationId: string; projectActive?: boolean }) {
+  const { status, actor } = useScope();
+  if (!publicChatConfig() || !projectActive || !canChatForApplication(status)) return null;
+  return <Link href={`/${actor === 'applicant' ? 'student' : 'business'}/messages?application=${applicationId}`} className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brand underline">{actor === 'applicant' ? 'Chat with the business' : 'Chat with the student'}</Link>;
 }
 
 export function LiveStatusActions() {

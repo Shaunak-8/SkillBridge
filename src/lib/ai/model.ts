@@ -1,6 +1,7 @@
 /**
  * Default Gemini text model for brief generation, refinement and translation (override with LLM_MODEL).
- * gemini-2.5-flash-lite returns 404 for newer API keys, and gemini-3.1-flash-lite is often slower than the 15s timeout.
+ * LLM_MODEL takes precedence. Use a model verified with the configured API key;
+ * older models can be listed by the provider yet reject generateContent calls.
  */
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 

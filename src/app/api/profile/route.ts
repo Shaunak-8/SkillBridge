@@ -5,9 +5,11 @@ import { rateLimit, sameOrigin } from '@/lib/auth/security';
 import { apiError, ApiFailure } from '@/lib/api';
 
 export async function GET() {
-  const current = await currentProfile();
-  if (!current) return apiError(new ApiFailure(401, 'UNAUTHENTICATED', 'Sign in required.'));
-  return Response.json({ profile: current.profile });
+  try {
+    const current = await currentProfile();
+    if (!current) return apiError(new ApiFailure(401, 'UNAUTHENTICATED', 'Sign in required.'));
+    return Response.json({ profile: current.profile });
+  } catch (error) { return apiError(error); }
 }
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return apiError(new ApiFailure(403, 'INVALID_ORIGIN', 'Invalid request origin.'));
