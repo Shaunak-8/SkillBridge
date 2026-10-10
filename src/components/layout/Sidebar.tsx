@@ -10,7 +10,6 @@ import {
   Sparkles,
   UserCheck,
   Users,
-  MessageSquare,
 } from "lucide-react";
 import type { Role } from "@/types";
 import { publicChatConfig } from "@/lib/chat/config";

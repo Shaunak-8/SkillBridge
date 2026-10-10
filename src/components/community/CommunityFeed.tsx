@@ -1,21 +1,8 @@
 import Link from 'next/link';
 import { MessageSquare, Heart, Clock } from 'lucide-react';
-import type { CommunityType } from '@/lib/community/service';
+import type { CommunityPost, CommunityType } from '@/lib/community/service';
 
-interface Post {
-  id: string;
-  author_id: string;
-  title: string;
-  body: string;
-  category: string;
-  created_at: Date;
-  author_name: string;
-  author_avatar?: string | null;
-  comment_count: number;
-  like_count: number;
-}
-
-export function CommunityFeed({ type, posts }: { type: CommunityType; posts: Post[] }) {
+export function CommunityFeed({ type, posts }: { type: CommunityType; posts: CommunityPost[] }) {
   return (
     <div className="mx-auto space-y-6 max-w-4xl">
       <div className="flex items-center justify-between mb-8">

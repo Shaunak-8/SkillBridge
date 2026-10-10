@@ -5,8 +5,8 @@ export default async function StudentPostPage({ params }: { params: Promise<{ po
   const { postId } = await params;
   
   // Service enforces requireRole('student') and strictly queries community_type = 'student'
-  const post = await getCommunityPost('student', postId);
-  const comments = await getPostComments('student', postId);
+  const post = await getCommunityPost('shared', postId);
+  const comments = await getPostComments('shared', postId);
   
-  return <CommunityPostDetail type="student" post={post as any} comments={comments as any} />;
+  return <CommunityPostDetail type="student" post={post} comments={comments} />;
 }

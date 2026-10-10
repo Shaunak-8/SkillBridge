@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { MessageSquare, Heart, Clock, ArrowLeft } from 'lucide-react';
-import type { CommunityType } from '@/lib/community/service';
+import type { CommunityComment, CommunityPost, CommunityType } from '@/lib/community/service';
 import { createCommentAction, toggleReactionAction } from '@/lib/community/actions';
 
 interface PostDetailProps {
   type: CommunityType;
-  post: any;
-  comments: any[];
+  post: CommunityPost | null;
+  comments: CommunityComment[];
 }
 
 export function CommunityPostDetail({ type, post, comments }: PostDetailProps) {
@@ -25,7 +25,7 @@ export function CommunityPostDetail({ type, post, comments }: PostDetailProps) {
     formData.append('body', commentText);
     
     try {
-      await createCommentAction(type, post.id, formData);
+      await createCommentAction('shared', postData.id, formData);
       setCommentText('');
     } catch (err) {
       console.error(err);
@@ -36,7 +36,7 @@ export function CommunityPostDetail({ type, post, comments }: PostDetailProps) {
 
   const handleReaction = async () => {
     try {
-      await toggleReactionAction(type, post.id);
+      await toggleReactionAction('shared', postData.id);
     } catch (err) {
       console.error(err);
     }
@@ -52,6 +52,7 @@ export function CommunityPostDetail({ type, post, comments }: PostDetailProps) {
       </div>
     );
   }
+  const postData = post;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -65,33 +66,33 @@ export function CommunityPostDetail({ type, post, comments }: PostDetailProps) {
 
       <div className="rounded-xl border-2 border-[#111111] bg-white p-6 shadow-[4px_4px_0_#111111]">
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-black leading-tight">{post.title}</h1>
+          <h1 className="text-2xl font-black leading-tight">{postData.title}</h1>
           <span className="whitespace-nowrap rounded-md border border-[#111111] bg-[#F7F0D2] px-2.5 py-1 text-xs font-bold uppercase tracking-wider">
-            {post.category}
+            {postData.category}
           </span>
         </div>
 
         <div className="flex items-center gap-3 mb-6 pb-6 border-b-2 border-gray-100">
           <div className="size-8 rounded-full bg-gray-200 overflow-hidden border border-[#111111]">
-            {post.author_avatar ? (
-              <img src={post.author_avatar} alt={post.author_name} className="size-full object-cover" />
+            {postData.author_avatar ? (
+              <img src={postData.author_avatar} alt={postData.author_name} className="size-full object-cover" />
             ) : (
               <div className="size-full bg-[#D83D63] text-white flex items-center justify-center text-sm font-bold">
-                {post.author_name[0]?.toUpperCase()}
+                {postData.author_name[0]?.toUpperCase()}
               </div>
             )}
           </div>
           <div>
-            <div className="font-bold text-[#111111]">{post.author_name}</div>
+            <div className="font-bold text-[#111111]">{postData.author_name}</div>
             <div className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
               <Clock size={12} />
-              {new Date(post.created_at).toLocaleDateString()}
+              {new Date(postData.created_at).toLocaleDateString()}
             </div>
           </div>
         </div>
 
         <div className="prose max-w-none mb-8 whitespace-pre-wrap font-medium text-gray-800">
-          {post.body}
+          {postData.body}
         </div>
 
         <div className="flex items-center gap-4">

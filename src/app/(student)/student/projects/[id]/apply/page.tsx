@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
-import { currentProfile, requireRole } from "@/lib/auth/profile";
+import { requireRole } from "@/lib/auth/profile";
 import { isUuid } from "@/lib/ws5/guard";
 import { loadProject } from "@/lib/ws5/repo";
 import { getMyProfile } from "@/lib/students/service";

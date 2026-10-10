@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Download, UserCircle, Briefcase, FileText } from "lucide-react";
-import { Badge, Card, SectionTitle, Button } from "@/components/ui";
+import { ArrowLeft, ExternalLink, Download, Briefcase, FileText } from "lucide-react";
+import { Badge, Card } from "@/components/ui";
 import { SkillBadge } from "@/components/shared/ProjectCard";
 import { businessPage } from "@/lib/business/pages";
 import { isUuid } from "@/lib/ws5/guard";
@@ -11,12 +11,45 @@ import type { ApplicationStatus } from "@/lib/applications/status";
 
 export const dynamic = "force-dynamic";
 
+interface ApplicantPortfolioItem {
+  id: string;
+  title: string;
+  description: string;
+  skillsUsed: string[];
+  projectUrl?: string;
+}
+
+interface ApplicantAnswer {
+  question: string;
+  answer_text: string;
+}
+
+interface ApplicantDetail {
+  owner_profile_id: string;
+  project_id: string;
+  required_skills: string[] | null;
+  skills: string[] | null;
+  full_name: string;
+  project_title: string;
+  status: string;
+  pitch: string | null;
+  cover_note: string | null;
+  portfolio: ApplicantPortfolioItem[] | null;
+  answers: ApplicantAnswer[] | null;
+  education_level: string | null;
+  study_year: number | null;
+  location_text: string | null;
+  resume_url: string | null;
+  resume_name: string | null;
+  availability_hours: number | null;
+}
+
 export default async function ApplicantDetailPage({ params }: { params: Promise<{ id: string, applicationId: string }> }) {
   const { id, applicationId } = await params;
   if (!isUuid(id) || !isUuid(applicationId)) notFound();
 
   const { owner: profileId } = await businessPage();
-  const app = await loadApplicationDetail(applicationId);
+  const app = await loadApplicationDetail(applicationId) as ApplicantDetail | null;
 
   // Authorization: Only the business that owns the project can view this application
   if (!app || app.owner_profile_id !== profileId || app.project_id !== id) {
@@ -62,7 +95,7 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
             <Card className="p-6">
               <h2 className="text-xl font-black mb-4 flex items-center gap-2"><Briefcase size={20} /> Selected Portfolio</h2>
               <div className="space-y-4">
-                {app.portfolio.map((item: any) => (
+                {app.portfolio.map((item) => (
                   <div key={item.id} className="rounded-xl border border-line p-4">
                     <h3 className="font-bold">{item.title}</h3>
                     <p className="text-sm text-muted mt-1">{item.description}</p>
@@ -86,7 +119,7 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
             <Card className="p-6">
               <h2 className="text-xl font-black mb-4">Screening Answers</h2>
               <div className="space-y-4">
-                {app.answers.map((ans: any, idx: number) => (
+                {app.answers.map((ans, idx) => (
                   <div key={idx} className="border-b border-line last:border-0 pb-4 last:pb-0">
                     <p className="font-bold text-sm mb-1">Q: {ans.question}</p>
                     <p className="text-sm text-muted">A: {ans.answer_text}</p>

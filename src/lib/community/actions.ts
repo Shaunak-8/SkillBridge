@@ -2,11 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { 
+  CommunityScope,
   CommunityType,
   createCommunityPost, 
   deleteCommunityPost, 
   addComment, 
-  deleteComment, 
   toggleReaction 
 } from './service';
 
@@ -35,7 +35,7 @@ export async function deletePostAction(communityType: CommunityType, postId: str
   revalidatePath(`/${communityType}/community`);
 }
 
-export async function createCommentAction(communityType: CommunityType, postId: string, formData: FormData) {
+export async function createCommentAction(communityType: CommunityScope, postId: string, formData: FormData) {
   const body = formData.get('body') as string;
   
   if (!body) {
@@ -43,11 +43,14 @@ export async function createCommentAction(communityType: CommunityType, postId: 
   }
 
   await addComment(communityType, postId, body);
-  revalidatePath(`/${communityType}/community/${postId}`);
+  revalidatePath(`/student/community/${postId}`);
+  revalidatePath(`/business/community/${postId}`);
 }
 
-export async function toggleReactionAction(communityType: CommunityType, postId: string) {
+export async function toggleReactionAction(communityType: CommunityScope, postId: string) {
   await toggleReaction(communityType, postId);
-  revalidatePath(`/${communityType}/community`);
-  revalidatePath(`/${communityType}/community/${postId}`);
+  revalidatePath('/student/community');
+  revalidatePath('/business/community');
+  revalidatePath(`/student/community/${postId}`);
+  revalidatePath(`/business/community/${postId}`);
 }
