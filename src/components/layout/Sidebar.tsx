@@ -10,6 +10,7 @@ import {
   Sparkles,
   UserCheck,
   Users,
+  MessageSquare,
 } from "lucide-react";
 import type { Role } from "@/types";
 import { publicChatConfig } from "@/lib/chat/config";
@@ -23,6 +24,7 @@ const links: Record<Role, { href: string; label: string; icon: typeof LayoutDash
     { href: "/student/my-projects", label: "Active Projects", icon: BriefcaseBusiness },
     { href: "/student/assessments", label: "Assessments", icon: BarChart3 },
     { href: "/student/profile", label: "My Profile & Portfolio", icon: UserCheck },
+    { href: "/student/community", label: "Student Community", icon: MessageSquare },
   ],
   business: [
     { href: "/business/dashboard", label: "Overview", icon: LayoutDashboard },
