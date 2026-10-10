@@ -91,14 +91,38 @@ export function useSpeechToText(options: UseSpeechToTextOptions = {}) {
       recognition.lang = getBcp47Tag(options.language);
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let currentTranscript = '';
+        const transcripts: string[] = [];
         for (let i = 0; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result && result[0]) {
-            currentTranscript += result[0].transcript + ' ';
+          if (event.results[i] && event.results[i][0]) {
+            transcripts.push(event.results[i][0].transcript.trim());
           }
         }
-        const trimmed = currentTranscript.trim();
+
+        // Android WebView Bug Fix:
+        // On Android, continuous speech sometimes returns cumulative strings in each result index.
+        // E.g. results[0] = "I", results[1] = "I want", results[2] = "I want you".
+        // Concatenating blindly yields "I I want I want you".
+        // We fix this by checking if the next string contains the current built string.
+        let fullTranscript = transcripts[0] || '';
+        for (let i = 1; i < transcripts.length; i++) {
+          const current = transcripts[i];
+          const fullLower = fullTranscript.toLowerCase();
+          const currentLower = current.toLowerCase();
+          
+          if (currentLower.startsWith(fullLower)) {
+            // Android cumulative bug: The new segment already contains everything we have.
+            // Just replace our full transcript with this new, longer one.
+            fullTranscript = current;
+          } else if (fullLower.endsWith(currentLower)) {
+            // Sometimes it repeats the last word
+            // Do nothing
+          } else {
+            // Standard behavior: it's a new word/sentence. Append it.
+            fullTranscript += ' ' + current;
+          }
+        }
+
+        const trimmed = fullTranscript.trim();
         setTranscript(trimmed);
         if (options.onTranscriptChange) {
           options.onTranscriptChange(trimmed);
