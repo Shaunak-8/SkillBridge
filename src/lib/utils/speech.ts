@@ -64,12 +64,10 @@ export function useSpeechToText(options: UseSpeechToTextOptions = {}) {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        setIsSupported(true);
-      }
-    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const timer = window.setTimeout(() => setIsSupported(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const startListening = useCallback(() => {

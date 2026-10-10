@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import '@cometchat/chat-uikit-react/styles';
 import './globals.css';
 import { LanguageProvider } from '@/lib/i18n/context';
 

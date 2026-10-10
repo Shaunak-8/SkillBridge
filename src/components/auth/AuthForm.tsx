@@ -1,16 +1,24 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Card, Input } from '@/components/ui';
 import { authClient } from '@/lib/auth/client';
 import { email, password, username } from '@/lib/auth/validation';
+import { loginDestination } from '@/lib/auth/login-destination';
 
-export function AuthForm({ mode }: { mode: 'login' | 'signup' | 'forgot' | 'reset' | 'verify' }) {
-  const router = useRouter();
+export function AuthForm({ mode, notice = '' }: { mode: 'login' | 'signup' | 'forgot' | 'reset' | 'verify'; notice?: string }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(notice);
   const [show, setShow] = useState(false);
+  useEffect(() => {
+    // Keep only the email in this tab; never retain passwords or verification codes.
+    if (mode !== 'verify') return;
+    try {
+      const input = formRef.current?.elements.namedItem('email');
+      if (input instanceof HTMLInputElement && !input.value) input.value = sessionStorage.getItem('skillbridge-verification-email') || '';
+    } catch { /* Storage restrictions must not prevent manual email entry. */ }
+  }, [mode]);
   const titles = { login: 'Welcome back', signup: 'Create your account', forgot: 'Forgot your password?', reset: 'Choose a new password', verify: 'Verify your email' };
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setMessage('');
@@ -25,10 +33,20 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' | 'forgot' | 'rese
       if (mode === 'signup') {
         const result = await authClient.signUp.email({ email: address, name: username(form.get('username')), password: secret, callbackURL: `${window.location.origin}/auth/continue` });
         if (result.error) throw new Error(result.error.message || 'Unable to create your account.');
-        if (!result.data?.user?.emailVerified) { setMessage('Account created. Verify your email before continuing.'); router.replace('/verify-email'); router.refresh(); return; }
+        if (!result.data?.user?.emailVerified) {
+          try { sessionStorage.setItem('skillbridge-verification-email', address); } catch {}
+          // Neon shared SMTP supports codes. Explicitly request one for this UI.
+          let sent = false;
+          try { sent = !(await authClient.emailOtp.sendVerificationOtp({ email: address, type: 'email-verification' })).error; } catch {}
+          window.location.replace(sent ? '/verify-email' : '/verify-email?delivery=retry'); return;
+        }
       } else if (mode === 'login') {
         const result = await authClient.signIn.email({ email: address, password: secret });
         if (result.error) throw new Error(result.error.message || 'Unable to sign in.');
+        if (!result.data?.user?.id) throw new Error('Sign-in did not complete. Please try again.');
+        const destination = await loginDestination(result.data.user.id);
+        window.location.replace(destination);
+        return;
       } else if (mode === 'forgot') {
         const result = await authClient.requestPasswordReset({ email: address, redirectTo: `${window.location.origin}/reset-password` });
         if (result.error) throw new Error('Unable to send a reset request. Please try again later.');
@@ -42,9 +60,16 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' | 'forgot' | 'rese
       } else {
         const result = await authClient.emailOtp.verifyEmail({ email: address, otp: String(form.get('otp')) });
         if (result.error) throw new Error('The code is invalid or expired. Request a new code.');
-        setMessage('Email verified. Sign in to continue.'); return;
+        try { sessionStorage.removeItem('skillbridge-verification-email'); } catch {}
+        const session = await authClient.getSession();
+        if (session.data?.user?.id && session.data.user.emailVerified) {
+          window.location.replace(await loginDestination(session.data.user.id));
+        } else window.location.replace('/login?verified=1');
+        return;
       }
-      router.replace('/auth/continue'); router.refresh();
+      // Start a fresh document with the new HttpOnly cookie; don't reuse an
+      // anonymous prefetched redirect or race replace() against refresh().
+      window.location.replace('/auth/continue');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Please try again.'); }
     finally { setBusy(false); }
   }
@@ -102,7 +127,8 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' | 'forgot' | 'rese
           </>
         )}
 
-        <form onSubmit={submit} className="mt-4 space-y-4" aria-busy={busy}>
+        {mode === 'verify' && <p className="mt-4 text-xs font-medium text-[#655F52]">Enter the code sent to your email. Check your spam folder too. If it hasn’t arrived, use “Send a new code” below.</p>}
+        <form ref={formRef} onSubmit={submit} className="mt-4 space-y-4" aria-busy={busy}>
           {mode === 'signup' && (
             <label className="block text-xs font-black uppercase tracking-wider text-[#151515]">
               Username
@@ -201,7 +227,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' | 'forgot' | 'rese
             </p>
           )}
 
-          <Button className="w-full" disabled={busy}>
+          <Button type="submit" className="w-full" disabled={busy}>
             {busy
               ? 'Please wait…'
               : {

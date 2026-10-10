@@ -6,12 +6,15 @@ import { authConfigured, getAuth } from './server';
 import { dashboardPath } from './validation';
 import type { Role } from '@/types';
 
-// cache() dedupes within one server render, so a layout and its page share a single session check and profile query.
 export const sessionUser = cache(async () => {
   if (!authConfigured()) return null;
-  const { data, error } = await getAuth().getSession();
-  if (error) return null;
-  return data?.user ?? null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await getAuth().getSession();
+    if (!error) return data?.user ?? null;
+    if (error.status === 401) return null;
+    if (error.status < 500) break;
+  }
+  throw new Error('Authentication is temporarily unavailable. Please retry.');
 });
 export const currentProfile = cache(async () => {
   const user = await sessionUser();

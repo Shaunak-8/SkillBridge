@@ -382,7 +382,7 @@ export async function listStudentApplications(studentId: string, { page, pageSiz
     FROM skillbridge.applications a JOIN skillbridge.projects p ON p.id = a.project_id
     WHERE a.student_id = ${studentId}
     ORDER BY a.created_at DESC, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
-  const items = rows.map(({ total: _t, ...r }: Row) => r);
+  const items = rows.map((r: Row) => { const item = { ...r }; delete item.total; return item; });
   return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };
 }
 
@@ -394,7 +394,7 @@ export async function listApplicationsForProfile(profileId: string, { page, page
     JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
     WHERE sp.profile_id = ${profileId}
     ORDER BY a.created_at DESC, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
-  const items = rows.map(({ total: _t, ...r }: Row) => r);
+  const items = rows.map((row: Row) => { const item = { ...row }; delete item.total; return item; });
   return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };
 }
 

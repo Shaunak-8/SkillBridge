@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { ApplyForm } from '@/components/ws5/actions';
 import { useLanguage } from '@/lib/i18n/context';
@@ -9,9 +10,10 @@ interface ProjectDetailApplyCardProps {
   projectId: string;
   role: string | null;
   applied: boolean;
+  canChat?: boolean;
 }
 
-export function ProjectDetailApplyCard({ projectId, role, applied }: ProjectDetailApplyCardProps) {
+export function ProjectDetailApplyCard({ projectId, role, applied, canChat }: ProjectDetailApplyCardProps) {
   const { t } = useLanguage();
 
   return (
@@ -31,6 +33,15 @@ export function ProjectDetailApplyCard({ projectId, role, applied }: ProjectDeta
             <Link href="/student/applications" className="font-black text-[#151515] underline block mt-1">
               {t('view_application_status')}
             </Link>
+            {canChat && (
+              <Link
+                href={`/student/messages?project=${projectId}`}
+                className="mt-3 inline-flex items-center gap-1.5 font-black text-[#D83D63] underline hover:text-[#c22e53]"
+              >
+                <MessageSquare size={13} />
+                {t('chat_with_business') !== 'chat_with_business' ? t('chat_with_business') : 'Chat with the business'} →
+              </Link>
+            )}
           </div>
         ) : (
           <ApplyForm projectId={projectId} />

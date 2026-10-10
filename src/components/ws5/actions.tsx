@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import Link from 'next/link';
 import { Button } from "@/components/ui";
 import { useLanguage } from "@/lib/i18n/context";
+import { publicChatConfig } from '@/lib/chat/config';
 
 export function ApplyForm({ projectId }: { projectId: string }) {
   const { t } = useLanguage();
@@ -20,9 +22,19 @@ export function ApplyForm({ projectId }: { projectId: string }) {
   }
   if (msg?.ok) {
     return (
-      <p role="status" className="rounded-xl border-2 border-[#111111] bg-[#dbf5ed] p-4 text-sm font-bold text-emerald-800 shadow-[3px_3px_0_#111111]">
-        {msg.text}
-      </p>
+      <div>
+        <p role="status" className="rounded-xl border-2 border-[#111111] bg-[#dbf5ed] p-4 text-sm font-bold text-emerald-800 shadow-[3px_3px_0_#111111]">
+          {msg.text}
+        </p>
+        {publicChatConfig() && (
+          <Link
+            href={`/student/messages?project=${projectId}`}
+            className="mt-3 inline-flex items-center gap-1.5 font-black text-[#D83D63] underline hover:text-[#c22e53]"
+          >
+            {t('chat_with_business') !== 'chat_with_business' ? t('chat_with_business') : 'Chat with the business'} →
+          </Link>
+        )}
+      </div>
     );
   }
   return (

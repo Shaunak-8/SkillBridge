@@ -128,12 +128,12 @@ export async function generateProjectDraft(
           retrievedFrom,
         };
       }
-    } catch (error: any) {
+    } catch (error) {
       clearTimeout(timeoutId);
-      const isTimeout = error.name === "AbortError";
+      const isTimeout = error instanceof Error && error.name === "AbortError";
       const failureReason = isTimeout
         ? `Gemini API request timed out after ${timeoutMs / 1000}s.`
-        : error.message || "Failed to reach Gemini API endpoint.";
+        : error instanceof Error && error.message ? error.message : "Failed to reach Gemini API endpoint.";
 
       console.error("Gemini API Error:", failureReason);
 
@@ -217,12 +217,12 @@ export async function generateProjectDraft(
           retrievedFrom,
         };
       }
-    } catch (error: any) {
+    } catch (error) {
       clearTimeout(timeoutId);
-      const isTimeout = error.name === "AbortError";
+      const isTimeout = error instanceof Error && error.name === "AbortError";
       const failureReason = isTimeout
         ? `OpenAI API request timed out after ${timeoutMs / 1000}s.`
-        : error.message || "Failed to reach OpenAI API endpoint.";
+        : error instanceof Error && error.message ? error.message : "Failed to reach OpenAI API endpoint.";
 
       return {
         draft: buildFallbackDraft(input.rawProblemText, input.category, input.format),

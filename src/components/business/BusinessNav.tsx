@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, FolderKanban, Sparkles, Settings, Users, MessageSquare } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/context';
+import { publicChatConfig } from '@/lib/chat/config';
 
 export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
   const path = usePathname();
   const { t } = useLanguage();
 
-  const links = [
+  const baseLinks = [
     { href: '/business/dashboard', label: t('nav_overview'), icon: LayoutDashboard },
     { href: '/business/projects/new', label: t('nav_create_project'), icon: Sparkles },
     { href: '/business/projects', label: t('nav_my_projects'), icon: FolderKanban },
@@ -17,6 +18,10 @@ export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
     { href: '/business/screening', label: t('nav_find_students'), icon: Users },
     { href: '/business/profile', label: t('nav_business_profile'), icon: Settings },
   ];
+
+  const visibleLinks = publicChatConfig()
+    ? [...baseLinks, { href: '/business/messages', label: t('messages') !== 'messages' ? t('messages') : 'Messages', icon: MessageSquare }]
+    : baseLinks;
 
   return (
     <nav
@@ -27,7 +32,7 @@ export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
           : 'space-y-1.5'
       }
     >
-      {links.map(({ href, label, icon: Icon }) => {
+      {visibleLinks.map(({ href, label, icon: Icon }) => {
         const active =
           path === href ||
           (href === '/business/projects' &&

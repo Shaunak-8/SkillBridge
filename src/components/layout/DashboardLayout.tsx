@@ -1,10 +1,12 @@
 import { Bell, Search } from 'lucide-react';
 import type { Role } from '@/types';
-import { Input } from '@/components/ui';
 import { Sidebar } from './Sidebar';
 import { AccountControls } from '@/components/auth/AccountControls';
 import { requireRole } from '@/lib/auth/profile';
 import { BusinessNav } from '@/components/business/BusinessNav';
+import { ChatSessionGuard } from '@/components/chat/ChatSessionGuard';
+import Link from 'next/link';
+import { publicChatConfig } from '@/lib/chat/config';
 
 export async function DashboardLayout({
   role,
@@ -17,6 +19,7 @@ export async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-[#F7F0D2] bg-cream-grid text-[#151515]">
+      <ChatSessionGuard />
       <Sidebar role={role} />
       <main className="min-w-0 flex-1">
         {/* Top bar with crisp 2px black border */}
@@ -68,7 +71,10 @@ export async function DashboardLayout({
         {role === 'business' && <BusinessNav mobile />}
 
         {/* Main Content View */}
-        <div className="mx-auto max-w-7xl p-5 sm:p-8">{children}</div>
+        <div className="mx-auto max-w-7xl p-5 sm:p-8">
+          {role === 'student' && publicChatConfig() && <Link href="/student/messages" className="mb-4 inline-block text-sm font-semibold text-brand lg:hidden">Messages</Link>}
+          {children}
+        </div>
       </main>
     </div>
   );

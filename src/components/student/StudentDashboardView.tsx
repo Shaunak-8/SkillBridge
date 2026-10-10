@@ -8,20 +8,15 @@ import Link from "next/link";
 import {
   ArrowRight,
   Briefcase,
-  CheckCircle2,
   ClipboardCheck,
-  Clock,
   ExternalLink,
-  GraduationCap,
   Loader2,
-  Plus,
   Sparkles,
   TrendingUp,
-  UserCheck,
 } from "lucide-react";
 import type { StudentPortfolioItemDTO, StudentProfileDTO } from "@/types/student";
 import { calculateProfileCompleteness } from "@/lib/validation/student";
-import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { StatCard } from "@/components/shared/StatCard";
 import { WelcomeBanner } from "@/components/shared/WelcomeBanner";
 import { ProfileCompleteness } from "./ProfileCompleteness";
@@ -145,7 +140,7 @@ export function StudentDashboardView() {
                 </span>
               </Link>
             </div>
-            {profile?.bio && (
+            {profile?.bio && (
               <p className="mt-4 text-xs leading-relaxed text-[#151515] bg-[#F7F0D2]/50 p-3.5 rounded-xl border-2 border-[#111111]">
                 &ldquo;{profile.bio}&rdquo;
               </p>
@@ -311,4 +306,3 @@ export function StudentDashboardView() {
     </div>
   );
 }
-

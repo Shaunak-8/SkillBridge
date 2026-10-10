@@ -1,6 +1,5 @@
 import "server-only";
 import { BriefInput } from "@/lib/business/contracts";
-import { translateText } from "@/lib/ai/translator";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/ai/model";
 
 export interface RefinementResult {

@@ -122,8 +122,8 @@ export function PortfolioSection({
       }
 
       setIsModalOpen(false);
-    } catch (err: any) {
-      setGlobalError(err.message || "An unexpected error occurred while saving.");
+    } catch (err) {
+      setGlobalError(err instanceof Error && err.message ? err.message : "An unexpected error occurred while saving.");
     } finally {
       setIsSaving(false);
     }
@@ -144,8 +144,8 @@ export function PortfolioSection({
       }
       onItemDeleted(itemToDelete.id);
       setItemToDelete(null);
-    } catch (err: any) {
-      setGlobalError(err.message || "Could not delete project. Please try again.");
+    } catch (err) {
+      setGlobalError(err instanceof Error && err.message ? err.message : "Could not delete project. Please try again.");
     } finally {
       setIsDeleting(false);
     }
