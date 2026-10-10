@@ -1,10 +1,20 @@
-import { getCommunityPosts } from '@/lib/community/service';
-import { CommunityFeed } from '@/components/community/CommunityFeed';
+import { getCommunityPosts, getUserProjectsForComposer } from '@/lib/community/service';
+import { currentProfile } from '@/lib/auth/profile';
+import { CommunityPage } from '@/components/community/CommunityPage';
+
+export const dynamic = 'force-dynamic';
 
 export default async function StudentCommunityPage() {
-  // Pass communityType='student'. Service will enforce requireRole('student')
+  const current = await currentProfile();
   const posts = await getCommunityPosts('shared');
-  
-  // Convert plain objects if needed, but getCommunityPosts returns simple objects.
-  return <CommunityFeed type="student" posts={posts} />;
+  const userProjects = await getUserProjectsForComposer();
+
+  return (
+    <CommunityPage
+      initialPosts={posts}
+      currentUserId={current?.profile?.id ?? null}
+      role="student"
+      userProjects={userProjects}
+    />
+  );
 }
