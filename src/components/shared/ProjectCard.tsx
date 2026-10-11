@@ -36,7 +36,13 @@ export function SkillBadge({ name }: { name: string; type?: string }) {
   );
 }
 
-export function ProjectCard({ project }: { project: Project }) {
+export function ProjectCard({
+  project,
+  compact = false,
+}: {
+  project: Project;
+  compact?: boolean;
+}) {
   const { t } = useLanguage();
   const targetHref =
     project.status === "draft"
@@ -49,9 +55,13 @@ export function ProjectCard({ project }: { project: Project }) {
     : t('remote_friendly');
 
   return (
-    <div className="group flex h-full flex-col justify-between rounded-xl border-2 border-[#111111] bg-white p-5 shadow-[4px_4px_0_#111111] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#111111]">
+    <div
+      className={`group flex h-full flex-col justify-between rounded-xl border-2 border-[#111111] bg-white shadow-[4px_4px_0_#111111] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#111111] ${
+        compact ? "p-4" : "p-5"
+      }`}
+    >
       <div>
-        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center rounded-md border-[1.5px] border-[#111111] bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
             {displayCategory}
           </span>
@@ -59,49 +69,62 @@ export function ProjectCard({ project }: { project: Project }) {
         </div>
 
         {project.businessName && (
-          <p className="text-xs font-bold text-[#D83D63] uppercase tracking-wide">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#D83D63]">
             {t(project.businessName) !== project.businessName ? t(project.businessName) : project.businessName}
           </p>
         )}
 
-        <h3 className="mt-1 text-base sm:text-lg font-black leading-snug text-[#151515] group-hover:text-[#D83D63] transition-colors">
+        <h3
+          className={`mt-1 font-black leading-snug text-[#151515] transition-colors group-hover:text-[#D83D63] ${
+            compact ? "text-sm sm:text-base line-clamp-1" : "text-base sm:text-lg"
+          }`}
+        >
           {project.title}
         </h3>
 
-        <p className="mt-2 line-clamp-2 text-xs sm:text-sm font-medium leading-relaxed text-[#655F52]">
+        <p
+          className={`mt-1.5 font-medium leading-relaxed text-[#655F52] ${
+            compact ? "line-clamp-2 text-xs" : "line-clamp-2 text-xs sm:text-sm"
+          }`}
+        >
           {project.summary || project.description}
         </p>
 
         {project.requirements && project.requirements.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {project.requirements.slice(0, 3).map((r) => (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {project.requirements.slice(0, compact ? 2 : 3).map((r) => (
               <SkillBadge key={r.id} name={r.skill.name} />
             ))}
+            {compact && project.requirements.length > 2 && (
+              <span className="inline-flex items-center rounded-md border-[1.5px] border-[#111111] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#655F52]">
+                +{project.requirements.length - 2}
+              </span>
+            )}
           </div>
         )}
       </div>
 
-      <div className="mt-5 border-t-2 border-[#111111] pt-3.5">
+      <div className={`border-t-2 border-[#111111] ${compact ? "mt-3.5 pt-2.5" : "mt-5 pt-3.5"}`}>
         <div className="flex items-center justify-between text-xs font-semibold text-[#655F52]">
-          <span className="flex items-center gap-1">
-            <MapPin size={13} className="text-[#151515]" />
-            {displayLocation}
+          <span className="flex items-center gap-1 truncate max-w-[120px]">
+            <MapPin size={13} className="shrink-0 text-[#151515]" />
+            <span className="truncate">{displayLocation}</span>
           </span>
           {project.duration && (
             <span className="flex items-center gap-1">
-              <Clock size={13} className="text-[#151515]" />
-              {t(project.duration) !== project.duration ? t(project.duration) : project.duration}
+              <Clock size={13} className="shrink-0 text-[#151515]" />
+              <span>{t(project.duration) !== project.duration ? t(project.duration) : project.duration}</span>
             </span>
           )}
           <span className="flex items-center gap-1">
-            <Users size={13} className="text-[#151515]" />
-            {project.mode === "team" ? t('team') : t('solo')}
+            <Users size={13} className="shrink-0 text-[#151515]" />
+            <span>{project.mode === "team" ? t('team') : t('solo')}</span>
           </span>
         </div>
 
         <Link
           href={targetHref}
-          className="mt-3.5 flex items-center justify-between rounded-lg border-2 border-[#111111] bg-[#F7F0D2] px-3 py-2 text-xs font-bold text-[#151515] shadow-[2px_2px_0_#111111] transition-all hover:bg-[#D83D63] hover:text-white active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#111111]"
+          className="mt-3 flex items-center justify-between rounded-lg border-2 border-[#111111] bg-[#F7F0D2] px-3 py-2 text-xs font-bold text-[#151515] shadow-[2px_2px_0_#111111] transition-all hover:bg-[#D83D63] hover:text-white active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#111111]"
         >
           <span>{project.status === "draft" ? t('draft') : t('view_project_apply')}</span>
           <ArrowUpRight size={15} />

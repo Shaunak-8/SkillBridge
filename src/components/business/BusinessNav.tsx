@@ -37,7 +37,9 @@ export function BusinessNav({ mobile = false }: { mobile?: boolean }) {
           path === href ||
           (href === '/business/projects' &&
             path.startsWith('/business/projects/') &&
-            path !== '/business/projects/new');
+            path !== '/business/projects/new') ||
+          (href === '/business/community' &&
+            path.startsWith('/business/community'));
 
         return (
           <Link

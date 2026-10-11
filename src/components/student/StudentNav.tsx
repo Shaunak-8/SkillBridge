@@ -40,7 +40,8 @@ export function StudentNav({ mobile = false }: { mobile?: boolean }) {
     >
       {visibleLinks.map(({ href, label, icon: Icon }) => {
         const active = pathname === href ||
-          (href === '/student/projects' && pathname.startsWith('/student/projects/'));
+          (href === '/student/projects' && pathname.startsWith('/student/projects/')) ||
+          (href === '/student/community' && pathname.startsWith('/student/community'));
 
         return (
           <Link

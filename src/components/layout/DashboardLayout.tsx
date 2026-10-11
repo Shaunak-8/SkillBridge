@@ -7,6 +7,8 @@ import { BusinessNav } from '@/components/business/BusinessNav';
 import { StudentNav } from '@/components/student/StudentNav';
 import { ChatSessionGuard } from '@/components/chat/ChatSessionGuard';
 
+import { MobileNavDrawer } from './MobileNavDrawer';
+
 export async function DashboardLayout({
   role,
   children,
@@ -23,25 +25,28 @@ export async function DashboardLayout({
       <main className="min-w-0 flex-1">
         {/* Top bar with crisp 2px black border */}
         <div className="sticky top-0 z-30 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b-2 border-[#111111] bg-white px-5 py-3 sm:px-8">
-          {role === 'business' ? (
-            <div className="flex items-center gap-2">
-              <span className="rounded-md border-[1.5px] border-[#111111] bg-[#F2BE4E] px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
-                Business Hub
-              </span>
-              <span className="hidden font-black text-sm text-[#151515] sm:inline">
-                SkillBridge Workspace
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="rounded-md border-[1.5px] border-[#111111] bg-[#F2BE4E] px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
-                {role === 'student' ? 'Student Hub' : 'Admin Hub'}
-              </span>
-              <span className="hidden font-black text-sm text-[#151515] sm:inline">
-                SkillBridge Workspace
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <MobileNavDrawer role={role} />
+            {role === 'business' ? (
+              <div className="flex items-center gap-2">
+                <span className="rounded-md border-[1.5px] border-[#111111] bg-[#F2BE4E] px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
+                  Business Hub
+                </span>
+                <span className="hidden font-black text-sm text-[#151515] sm:inline">
+                  SkillBridge Workspace
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="rounded-md border-[1.5px] border-[#111111] bg-[#F2BE4E] px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-[#151515] shadow-[1.5px_1.5px_0_#111111]">
+                  {role === 'student' ? 'Student Hub' : 'Admin Hub'}
+                </span>
+                <span className="hidden font-black text-sm text-[#151515] sm:inline">
+                  SkillBridge Workspace
+                </span>
+              </div>
+            )}
+          </div>
 
           <div className="ml-auto flex flex-wrap items-center gap-3">
             {role !== 'business' && (
