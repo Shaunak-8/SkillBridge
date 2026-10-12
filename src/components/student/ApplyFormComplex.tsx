@@ -10,7 +10,8 @@ interface ApplicationProject {
   title: string;
 }
 
-export function ApplyFormComplex({ project, profile }: { project: ApplicationProject; profile: StudentProfileDTO }) {
+/** `teamId` submits the application on behalf of that team (the leader's account applies; the API verifies it). */
+export function ApplyFormComplex({ project, profile, teamId }: { project: ApplicationProject; profile: StudentProfileDTO; teamId?: string }) {
   const [step, setStep] = useState(1);
   const [pitch, setPitch] = useState('');
   const [answers] = useState<Record<string, string>>({});
@@ -44,6 +45,7 @@ export function ApplyFormComplex({ project, profile }: { project: ApplicationPro
         pitch,
         answers: Object.entries(answers).map(([q, a]) => ({ question_id: q, answer_text: a })),
         availability_hours: profile.availability?.hoursPerWeek,
+        ...(teamId ? { team_id: teamId } : {}),
       };
 
       const res = await fetch(`/api/projects/${project.id}/applications`, { 

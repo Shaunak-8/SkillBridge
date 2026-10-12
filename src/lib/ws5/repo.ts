@@ -370,16 +370,17 @@ export interface ApplicationInput {
   answers?: { question_id: string; answer_text: string }[];
 }
 
-export async function insertComplexApplication(projectId: string, studentId: string, input: ApplicationInput) {
+/** `teamId` makes this the application of a team; the database only accepts it from the team's leader. */
+export async function insertComplexApplication(projectId: string, studentId: string, input: ApplicationInput, teamId?: string) {
   const sql = database();
   const id = randomUUID();
   const queries = [];
 
   queries.push(
-    sql`INSERT INTO skillbridge.applications (id, project_id, student_id, cover_note, resume_id, pitch, availability_hours, available_from)
+    sql`INSERT INTO skillbridge.applications (id, project_id, student_id, cover_note, resume_id, pitch, availability_hours, available_from, team_id)
       SELECT ${id}, ${projectId}, ${studentId}, ${input.cover_note},
         (SELECT r.id FROM skillbridge.resumes r WHERE r.student_id = ${studentId} ORDER BY r.created_at DESC, r.id DESC LIMIT 1),
-        ${input.pitch ?? null}, ${input.availability_hours ?? null}, ${input.available_from ?? null}
+        ${input.pitch ?? null}, ${input.availability_hours ?? null}, ${input.available_from ?? null}, ${teamId ?? null}::uuid
       WHERE EXISTS (SELECT 1 FROM skillbridge.projects WHERE id = ${projectId} AND status = 'published')`
   );
 
@@ -440,12 +441,17 @@ export async function listStudentApplications(studentId: string, { page, pageSiz
 }
 
 /** Same as `listStudentApplications` but resolves the student row inside the query (saves a round trip). */
-export async function listApplicationsForProfile(profileId: string, { page, pageSize }: Page) {
+/** `includeTeam` also lists applications made by a team the student is an active member of (`is_applicant` marks their own). */
+export async function listApplicationsForProfile(profileId: string, { page, pageSize }: Page, includeTeam = false) {
   const rows = await database()`SELECT a.id, a.status, a.cover_note, a.created_at, a.updated_at, p.id AS project_id,
-      p.title AS project_title, p.category AS project_category, p.status AS project_status, count(*) OVER() AS total
+      p.title AS project_title, p.category AS project_category, p.status AS project_status, a.team_id,
+      (sp.profile_id = ${profileId}) AS is_applicant, count(*) OVER() AS total
     FROM skillbridge.applications a JOIN skillbridge.projects p ON p.id = a.project_id
     JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
     WHERE sp.profile_id = ${profileId}
+      OR (${includeTeam} AND EXISTS (SELECT 1 FROM skillbridge.team_members tm
+        JOIN skillbridge.student_profiles msp ON msp.id = tm.student_id
+        WHERE tm.team_id = a.team_id AND tm.status = 'active' AND msp.profile_id = ${profileId}))
     ORDER BY a.created_at DESC, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
   const items = rows.map((row: Row) => { const item = { ...row }; delete item.total; return item; });
   return { items, total: rows.length ? Number(rows[0].total) : 0, page, pageSize };

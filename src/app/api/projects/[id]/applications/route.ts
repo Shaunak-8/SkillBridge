@@ -1,6 +1,7 @@
 import { rateLimit, sameOrigin } from '@/lib/auth/security';
 import { insertApplication, insertComplexApplication, loadProject, studentIdForProfile } from '@/lib/ws5/repo';
 import { fail, guard, isUuid, unavailable } from '@/lib/ws5/guard';
+import { teamErrorResponse } from '@/lib/teams/errors';
 
 const MAX_NOTE = 2000;
 const APPLY_LIMIT = 20;
@@ -27,7 +28,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const project = await loadProject(id);
     if (!project || project.status !== 'published') return fail('Project not found.', 404);
 
-    const isComplexApplication = Boolean(pitch || body.answers || body.availability_hours !== undefined || body.available_from);
+    // A team application is submitted by the team leader; the database verifies the leader and the 2-5 roster.
+    const teamId = body.team_id;
+    if (teamId !== undefined && (typeof teamId !== 'string' || !isUuid(teamId))) return fail('Invalid team.', 400);
+
+    const isComplexApplication = Boolean(teamId || pitch || body.answers || body.availability_hours !== undefined || body.available_from);
     const created = isComplexApplication
       ? await insertComplexApplication(id, studentId, {
           cover_note: note,
@@ -35,13 +40,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           answers: body.answers,
           availability_hours: body.availability_hours,
           available_from: body.available_from ? new Date(body.available_from) : undefined,
-        })
+        }, teamId)
       : await insertApplication(id, studentId, note);
-    
+
     if (!created) return fail('Project not found.', 404);
     return Response.json({ application: created }, { status: 201 });
   } catch (error) {
-    if ((error as { code?: string }).code === '23505') return fail('You have already applied', 409);
-    return unavailable();
+    const { code, constraint } = error as { code?: string; constraint?: string };
+    if (code === '23505' && constraint !== 'applications_team_idx') return fail('You have already applied', 409);
+    const mapped = teamErrorResponse(error);
+    return mapped.status === 503 ? unavailable() : fail(mapped.message, mapped.status);
   }
 }

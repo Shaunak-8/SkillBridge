@@ -6,6 +6,10 @@ import { isUuid } from "@/lib/ws5/guard";
 import { loadProject } from "@/lib/ws5/repo";
 import { getMyProfile } from "@/lib/students/service";
 import { ApplyFormComplex } from "@/components/student/ApplyFormComplex";
+import { ApplyModeTabs } from "@/components/teams/ApplyModeTabs";
+import { TeamApplyPanel } from "@/components/teams/TeamApplyPanel";
+import { TeamInvites } from "@/components/teams/TeamInvites";
+import { listMyInvites, loadProjectTeam } from "@/lib/teams/repo";
 import { database } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -15,15 +19,17 @@ export default async function ApplyProjectPage({ params }: { params: Promise<{ i
   if (!isUuid(id)) notFound();
 
   const auth = await requireRole('student');
-  const [project, profile] = await Promise.all([
-    loadProject(id), 
-    getMyProfile(auth.profile.id)
+  const [project, profile, team, invites] = await Promise.all([
+    loadProject(id),
+    getMyProfile(auth.profile.id),
+    loadProjectTeam(auth.profile.id, id),
+    listMyInvites(auth.profile.id),
   ]);
 
   if (!project || project.status !== "published") notFound();
 
-  // Check if already applied
-  const rows = await database()`SELECT 1 FROM skillbridge.applications a JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
+  // Check if already applied on their own (a team member's application is shown through the team panel)
+  const rows = team ? [] : await database()`SELECT 1 FROM skillbridge.applications a JOIN skillbridge.student_profiles sp ON sp.id = a.student_id
     WHERE a.project_id = ${id} AND sp.profile_id = ${auth.profile.id} LIMIT 1`;
   const applied = rows.length > 0;
 
@@ -50,7 +56,12 @@ export default async function ApplyProjectPage({ params }: { params: Promise<{ i
         <p className="text-sm font-medium text-muted">Complete your application below.</p>
       </div>
 
-      <ApplyFormComplex project={project} profile={profile} />
+      {!team && <TeamInvites invites={invites.filter(invite => invite.projectId === id)} />}
+      {team
+        ? <TeamApplyPanel project={project} profile={profile} initialTeam={team} />
+        : project.mode === "team"
+          ? <ApplyModeTabs project={project} profile={profile} />
+          : <ApplyFormComplex project={project} profile={profile} />}
     </main>
   );
 }

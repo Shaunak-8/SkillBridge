@@ -10,13 +10,15 @@ import type { ApplicationStatus } from "@/lib/applications/status";
 import { isEligible, recommendStudentsForProject } from "@/lib/matching/rank";
 import { isUuid } from "@/lib/ws5/guard";
 import { listProjectApplications, loadProjectRecommendationInput } from "@/lib/ws5/repo";
+import { teamsForApplications } from "@/lib/teams/repo";
+import { TeamRoster } from "@/components/teams/TeamRoster";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isUuid(id)) notFound();
-  let project, apps, suggestions, retriever;
+  let project, apps, suggestions, retriever, teams;
   try {
     const { owner: profileId } = await businessPage();
     // One parallel round trip; the applications are only used after the owner check passed.
@@ -26,6 +28,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     project = input.project;
     retriever = input.retriever;
     apps = applications;
+    teams = await teamsForApplications(apps.items.map((a) => a.id));
     const applied = new Set(apps.items.map((a) => a.student.id));
     const byId = new Map(students.map((s) => [s.id, s]));
     suggestions = recommendStudentsForProject(project, students, {}, retriever).filter((r) => !applied.has(r.id)).map((r) => ({ ...r, student: byId.get(r.id)! }));
@@ -41,10 +44,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     {apps.total > 50 && <p className="mb-4 text-sm text-muted">Showing the 50 most recent applications.</p>}
     {apps.items.length === 0 ? <EmptyState>No applications yet.</EmptyState> : <div className="space-y-4">{apps.items.map((a) => {
       const ev = isEligible(project, { ...a.student, visibility: "matching" }) ? recommendStudentsForProject(project, [{ ...a.student, visibility: "matching" }], {}, retriever)[0] : undefined;
+      const team = teams.get(a.id);
       return <ApplicationStatusScope key={a.id} applicationId={a.id} status={a.status as ApplicationStatus} actor="business_owner"><Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-bold">{a.student.displayName}</h3><p className="text-xs text-muted">Applied {new Date(a.createdAt).toLocaleDateString("en-GB")}{a.student.availabilityHoursPerWeek != null && ` · ${a.student.availabilityHoursPerWeek} hrs/week`}</p></div><LiveStatusBadge /></div>
         <p className="mt-3 whitespace-pre-line text-sm leading-6">{a.coverNote}</p>
         {a.student.skills.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{a.student.skills.map((s) => <SkillBadge key={s} name={s} />)}</div>}
+        {team && <div className="mt-4"><p className="mb-2 text-sm font-bold">Team application: {team.name}</p><TeamRoster members={team.members} /></div>}
         <WhyMatch reasons={ev?.reasons ?? []} />
         <div className="mt-5 flex gap-2 items-center flex-wrap">
           <Link href={`/business/projects/${id}/applicants/${a.id}`} className="inline-flex h-9 items-center justify-center rounded-xl bg-brand px-3 text-sm font-semibold text-white hover:bg-brand-dark">View Application</Link>

@@ -6,6 +6,8 @@ import { SkillBadge } from "@/components/shared/ProjectCard";
 import { businessPage } from "@/lib/business/pages";
 import { isUuid } from "@/lib/ws5/guard";
 import { loadApplicationDetail } from "@/lib/ws5/repo";
+import { teamsForApplications } from "@/lib/teams/repo";
+import { TeamRoster } from "@/components/teams/TeamRoster";
 import { ApplicationStatusScope, LiveStatusActions, LiveStatusBadge } from "@/components/ws5/status-scope";
 import type { ApplicationStatus } from "@/lib/applications/status";
 
@@ -63,6 +65,7 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
     notFound();
   }
 
+  const team = (await teamsForApplications([applicationId])).get(applicationId);
   const projectSkills = new Set((app.required_skills as string[] || []).map(s => s.toLowerCase()));
   const studentSkills = (app.skills as string[] || []);
   
@@ -91,6 +94,13 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
       <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         {/* Left Column - Application Content */}
         <div className="space-y-6">
+          {team && (
+            <Card className="p-6">
+              <h2 className="text-xl font-black mb-1">Team: {team.name}</h2>
+              <p className="mb-4 text-sm text-muted">This is a team application. {app.full_name} is the team leader and your contact.</p>
+              <TeamRoster members={team.members} />
+            </Card>
+          )}
           <Card className="p-6">
             <h2 className="text-xl font-black mb-4 flex items-center gap-2"><FileText size={20} /> Application Pitch</h2>
             <div className="whitespace-pre-wrap text-sm leading-relaxed bg-[#F7F0D2]/20 p-4 rounded-xl border border-line">
